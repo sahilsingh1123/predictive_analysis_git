@@ -47,7 +47,7 @@ class chi:
         print("chi2 output with top %d features selected " % selector.getNumTopFeatures())
         result.show()
 
-        # runnin gfor the chi vallue test
+        #runnin gfor the chi vallue test
 
         r = ChiSquareTest.test(result, "selected_features", "label").head()
         print("pValues: " + str(r.pValues))
