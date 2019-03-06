@@ -2,8 +2,6 @@ from pyspark.sql import SparkSession
 from pyspark.ml.feature import RFormula
 from pyspark.ml.stat import ChiSquareTest
 
-# if __name__=="__main__":
-
 
 dataset_add= "/home/fidel/mltest/bank.csv"
 features = ["default","housing","loan"]
