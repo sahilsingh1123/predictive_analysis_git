@@ -171,6 +171,17 @@ if __name__ == '__main__':
     print(" p values :\n" + str(training_summary.pValues))
     print("  :\n" + str(training_summary.devianceResiduals))
 
+
+    # converting the dataset into pandas dataset
+
+    dataset_pandas = dataset.toPandas()
+
+    data_iloc = dataset_pandas.iloc[0:9, :].values
+    print data_iloc
+    print dataset_pandas.mean()
+    print dataset_pandas.max()
+    print dataset_pandas.mean().hist()
+
     # plotting the graph
     # import pandas as pd
     # dataset_graph = dataset.toPandas()
