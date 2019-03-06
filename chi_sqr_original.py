@@ -16,9 +16,6 @@ spark.sparkContext.setLogLevel("ERROR")
 
 class chi:
 
-    def __init__(self):
-        print "created ---"
-
     def Chi_sqr(dataset_add, features, label):
         dataset = spark.read.csv(dataset_add, header=True, inferSchema=True, sep=";")
 
