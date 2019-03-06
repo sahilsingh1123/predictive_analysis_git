@@ -38,7 +38,6 @@ class chi:
         output.select("features", "label").show()
 
         # chi selector
-
         from pyspark.ml.feature import ChiSqSelector
 
         selector = ChiSqSelector(numTopFeatures=3, featuresCol="features", outputCol="selected_features", labelCol="label")
