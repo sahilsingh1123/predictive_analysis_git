@@ -37,7 +37,6 @@ class chi:
 
         output.select("features", "label").show()
 
-
         # chi selector
 
         from pyspark.ml.feature import ChiSqSelector
