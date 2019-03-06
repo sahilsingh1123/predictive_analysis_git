@@ -7,7 +7,7 @@ import matplotlib.pyplot
 
 # import  statsmodels
 from statsmodels.stats.anova import AnovaRM
-# statsmodels.__version__
+
 
 
 if __name__ == '__main__':
@@ -30,8 +30,9 @@ if __name__ == '__main__':
 
     boxplot = df.boxplot('age', by='marital', figsize=(12, 8))
 
+    df_anova = dataset.toPandas()
 
-    mod = ols("age ~ housing", data=df).fit()
+    mod = ols("age ~ housing", data=df_anova).fit()
     aov_table = sm.stats.anova_lm(mod , typ=2)
     print aov_table
 
@@ -41,9 +42,8 @@ if __name__ == '__main__':
 
     # using 1st test
 
-    df_anova = dataset.toPandas()
 
-    anovarm = AnovaRM(df_anova, "age", "defaulter" , within=["marital"])
+    anovarm = AnovaRM(df_anova, "age", "default" , within=["marital"])
     fit = anovarm.fit()
     fit.summary()
 
