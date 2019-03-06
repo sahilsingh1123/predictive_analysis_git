@@ -180,7 +180,8 @@ if __name__ == '__main__':
     print data_iloc
     print dataset_pandas.mean()
     print dataset_pandas.max()
-    print dataset_pandas.mean().hist()
+    print dataset_pandas.hist()
+    print dataset_pandas.std()
 
     # plotting the graph
     # import pandas as pd
