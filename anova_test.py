@@ -6,7 +6,7 @@ from statsmodels.formula.api import ols
 import matplotlib.pyplot
 
 # import  statsmodels
-# from statsmodels.stats.anova import AnovaRM
+from statsmodels.stats.anova import AnovaRM
 # statsmodels.__version__
 
 
@@ -19,7 +19,7 @@ if __name__ == '__main__':
 
     print"\nspark session created sucessfully:: \n"
 
-    dataset = spark.read.csv("/home/fidel/mltest/auto-miles-per-gallon.csv", header=True, inferSchema=True)
+    dataset = spark.read.csv("/home/fidel/mltest/bank.csv", header=True, inferSchema=True)
 
     dataset.printSchema()
     df = pd.read_csv("/home/fidel/mltest/bank.csv", delimiter=";")
@@ -40,10 +40,12 @@ if __name__ == '__main__':
 
 
     # using 1st test
-    #
-    # anovarm = AnovaRM(df, "MPG", "ACCELERATION" , within=["WEIGHT"])
-    # fit = anovarm.fit()
-    # fit.summary()
+
+    df_anova = dataset.toPandas()
+
+    anovarm = AnovaRM(df_anova, "age", "defaulter" , within=["marital"])
+    fit = anovarm.fit()
+    fit.summary()
 
 
 
