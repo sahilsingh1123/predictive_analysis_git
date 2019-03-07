@@ -12,8 +12,12 @@ if __name__ == '__main__':
     dataset = spark.read.csv("/home/fidel/mltest/auto-miles-per-gallon.csv", header=True, inferSchema=True)
 
     dataset.show()
-    quantile = dataset.approxQuantile("MPG",[0.25,0.50,0.75],0.25)
+    ## finding the quantile in the dataset
+
+    quantile = dataset.approxQuantile("MPG",[0.25,0.50,0.75, 0.99],0.01)
     print quantile
+
+
     #
     # dataset2=dataset.describe().toPandas().transpose()
     # dataset2.collect()
