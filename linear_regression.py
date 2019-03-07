@@ -176,11 +176,14 @@ if __name__ == '__main__':
 
     dataset_pandas = dataset.toPandas()
 
+    import matplotlib.pyplot as plt
+
     data_iloc = dataset_pandas.iloc[0:9, :].values
     print data_iloc
     print dataset_pandas.mean()
     print dataset_pandas.max()
-    print dataset_pandas.hist()
+    x = [1,2,3,5,8,9,7,4]
+
     print dataset_pandas.std()
 
     # plotting the graph
