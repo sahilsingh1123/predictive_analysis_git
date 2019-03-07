@@ -182,8 +182,6 @@ if __name__ == '__main__':
     print data_iloc
     print dataset_pandas.mean()
     print dataset_pandas.max()
-    x = [1,2,3,5,8,9,7,4]
-
     print dataset_pandas.std()
 
     # plotting the graph
