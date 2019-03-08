@@ -2,7 +2,7 @@ import linear_reg_original
 import json
 
 dataset_add = "/home/fidel/mltest/auto-miles-per-gallon.csv"
-feature_colm = ["CYLINDERS", "WEIGHT", "ACCELERATION", "DISPLACEMENT", "MODELYEAR"]
+feature_colm = ["CYLINDERS", "WEIGHT" , "HORSEPOWER","ACCELERATION", "DISPLACEMENT", "MODELYEAR"]
 label_colm = "MPG"
 algorithm = "linear_reg"
 
@@ -21,7 +21,7 @@ def application(data_add, feat_col, label_col, algo):
 
 
     print "done"
-    return response_data
+    return iter([response_data])
 
 
 
