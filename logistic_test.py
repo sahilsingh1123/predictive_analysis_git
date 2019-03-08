@@ -51,11 +51,12 @@ class logistic_reg:
         # fit the model
 
 
-        Model = lr.fit(train_data)
+        lrModel = lr.fit(train_data)
 
 
-        lrModel = Model.transform(test_data)
-        lrModel.groupBy("label", "prediction").count().show()
+        prediction = lrModel.transform(test_data)
+        prediction.groupBy("label", "prediction").count().show()
+        prediction.show()
 
         # print the coefficients and the intercept for the logistic regression
         #
