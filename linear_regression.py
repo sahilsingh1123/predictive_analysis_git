@@ -12,15 +12,23 @@ if __name__ == '__main__':
     dataset = spark.read.csv("/home/fidel/mltest/auto-miles-per-gallon.csv", header=True, inferSchema=True)
 
     dataset.show()
-    ## finding the quantile in the dataset
-
-    quantile = dataset.approxQuantile("MPG",[0.25,0.50,0.75, 0.99],0.01)
-    print quantile
 
 
     #
     # dataset2=dataset.describe().toPandas().transpose()
     # dataset2.collect()
+
+
+
+    # dataset.na.replace("?", "80.0")
+    # dataset.na.replace(["null"], ["80.0"], 'HORSEPOWER')
+
+    # dataset = dataset.withColumn("HORSEPOWER", col("HORSEPOWER").cast("integer"))
+    # # dataset.na.fill({"HORSEPOWER": 80.0})
+    # dataset.printSchema()
+    # dataset.fillna(80)
+    # dataset.show(50)
+
 
     # creating vector assembler
 
@@ -125,9 +133,52 @@ if __name__ == '__main__':
     #
 
 
-    prediction = regressor.evaluate(test_data)
+    prediction_va = regressor.evaluate(test_data)
 
-    prediction.predictions.show()
+
+    prediction_val =    prediction_va.predictions
+    prediction_val.show()
+
+
+    prediction_val_pand = prediction_val.select("MPG", "prediction").toPandas()
+
+    prediction_val_pand = prediction_val_pand.assign(residual_vall=prediction_val_pand["MPG"] - prediction_val_pand["prediction"])
+
+
+    prediction_val_pand_residual = prediction_val_pand["residual_vall"]
+    print prediction_val_pand_residual
+    prediction_val_pand_predict = prediction_val_pand["prediction"]
+    print prediction_val_pand_predict
+
+    import matplotlib.pyplot as plt
+
+    plt.scatter(prediction_val_pand_predict,prediction_val_pand_residual)
+    plt.axhline(y=0.0, color = "red")
+    plt.xlabel("prediction")
+    plt.ylabel("residual")
+    plt.title("residual vs fitted ")
+    plt.show()
+
+    print prediction_val_pand
+
+    # import pandas as pd
+    #
+    #
+    # df = pd.DataFrame([["Australia", 1, 3, 5],
+    #                    ["Bambua", 12, 33, 56],
+    #                    ["Tambua", 14, 34, 58]
+    #                    ], columns=["Country", "Val1", "Val2", "Val10"]
+    #                   )
+    #
+    # df = df.assign(Val10_minus_Val1=df['Val10'] - df['Val1'])
+    # print df
+
+    # for MPG, prediction in prediction_val_pand.iterrows():
+    #     residual_val.append(MPG-prediction)
+    #
+    # print residual_val
+
+    # prediction.predictions.show()
 
     # prediction.groupBy("MPG", "prediction").count().show()
 
@@ -144,7 +195,9 @@ if __name__ == '__main__':
     lr_prediction = regressor.transform(test_data)
 
     lr_prediction.groupBy("MPG", "prediction").count().show()
-    # lr_prediction.show()
+
+    lr_prediction_quantile = lr_prediction.select("MPG", "prediction")
+    lr_prediction_quantile.show()
     # lr_prediction_pandas = lr_prediction.toPandas()
 
     #
@@ -169,7 +222,7 @@ if __name__ == '__main__':
 
     training_summary.residuals.show()
     residual_graph = training_summary.residuals
-    residual_graph = residual_graph.toPandas()
+    residual_graph_pandas = residual_graph.toPandas()
     print("coefficient standard errors: \n" + str(training_summary.coefficientStandardErrors))
     print(" Tvalues :\n" + str(training_summary.tValues))
     print(" p values :\n" + str(training_summary.pValues))
@@ -233,4 +286,39 @@ if __name__ == '__main__':
     #
     # fig, ax = plt.subplots()
     # hist(ax, dataset, bins=20, color=['red'])
+
+
+
+    ##########################################################################
+
+    # DATA VISUALIZATION PART
+
+    ## finding the quantile in the dataset
+
+    quantile_label = lr_prediction_quantile.approxQuantile("MPG", [0.25, 0.50, 0.75, 0.99], 0.01)
+    print quantile_label
+    quantile_prediction = lr_prediction_quantile.approxQuantile("prediction", [0.25, 0.50, 0.75, 0.99], 0.01)
+    print quantile_prediction
+
+    ## finding the residual vs fitted graph data
+
+    residual_graph.show()
+    prediction_col = lr_prediction_quantile.select("prediction")
+
+    prediction_col.show()
+
+    ## residual vs leverage graph data
+
+    residual_graph
+    # extreme value in the predictor colm
+    prediction_col_extremeval = lr_prediction_quantile.agg({"prediction" : "max"})
+    prediction_col_extremeval.show()
+
+
+    ## scale location graph data
+
+    residual_graph.show()
+    prediction_col = lr_prediction_quantile.select("prediction")
+
+    prediction_col.show()
 

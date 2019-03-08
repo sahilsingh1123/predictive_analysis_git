@@ -1,6 +1,10 @@
 from pyspark.sql import SparkSession
 from pyspark.ml.feature import VectorAssembler
 from pyspark.ml.regression import LinearRegression
+from pyspark.sql.functions import col
+
+
+
 import json
 
 spark = SparkSession.builder.appName("predictive_Analysis").master("local[*]").getOrCreate()
@@ -15,6 +19,13 @@ spark.sparkContext.setLogLevel("ERROR")
 def Linear_reg(dataset_add, feature_colm, label_colm):
     dataset = spark.read.csv(dataset_add, header=True , inferSchema=True)
     dataset.show()
+
+    # renaming the colm
+    print label_colm
+    dataset.withColumnRenamed(label_colm,"label")
+    print label_colm
+    dataset.show()
+
 
     featureassembler = VectorAssembler(inputCols=feature_colm,
         outputCol="Independent_features")
@@ -40,6 +51,7 @@ def Linear_reg(dataset_add, feature_colm, label_colm):
     lr = LinearRegression(featuresCol="Independent_features", labelCol=label_colm)
     regressor = lr.fit(train_data)
 
+
     # print regressor.featureImportances
 
     # print(dataset.orderBy(feature_colm, ascending=True))
@@ -58,7 +70,33 @@ def Linear_reg(dataset_add, feature_colm, label_colm):
     prediction = regressor.evaluate(test_data)
 
 
-    prediction.predictions.show()
+
+    prediction_val =    prediction.predictions
+    prediction_val.show()
+
+
+    prediction_val_pand = prediction_val.select("MPG", "prediction").toPandas()
+
+    prediction_val_pand = prediction_val_pand.assign(residual_vall=prediction_val_pand["MPG"] - prediction_val_pand["prediction"])
+
+
+    prediction_val_pand_residual = prediction_val_pand["residual_vall"]
+    print prediction_val_pand_residual
+    prediction_val_pand_predict = prediction_val_pand["prediction"]
+    print prediction_val_pand_predict
+
+
+
+    # test_summary = prediction.summary
+
+    # for test data
+
+    lr_prediction = regressor.transform(test_data)
+
+    lr_prediction.groupBy("MPG", "prediction").count().show()
+
+    lr_prediction_quantile = lr_prediction.select(label_colm, "prediction")
+    lr_prediction_quantile.show()
 
     training_summary = regressor.summary
 
@@ -72,19 +110,54 @@ def Linear_reg(dataset_add, feature_colm, label_colm):
     print("r**2(r-square adjusted)....%f\n" % training_summary.r2adj)
     print("deviance residuals %s" % str(training_summary.devianceResiduals))
     training_summary.residuals.show()
+    residual_graph = training_summary.residuals
+    residual_graph_pandas = residual_graph.toPandas()
     print("coefficient standard errors: \n" + str(training_summary.coefficientStandardErrors))
     print(" Tvalues :\n" + str(training_summary.tValues))
     print(" p values :\n" + str(training_summary.pValues))
 
     json_response = {"adjusted r**2 value" : training_summary.r2adj}
 
+    # DATA VISUALIZATION PART
+
+    ## finding the quantile in the dataset
+
+    quantile_label = lr_prediction_quantile.approxQuantile("MPG", [0.25, 0.50, 0.75, 0.99], 0.01)
+    print quantile_label
+    quantile_prediction = lr_prediction_quantile.approxQuantile("prediction", [0.25, 0.50, 0.75, 0.99], 0.01)
+    print quantile_prediction
+
+    ## finding the residual vs fitted graph data
+
+
+
+    import matplotlib.pyplot as plt
+
+    plt.scatter(prediction_val_pand_predict,prediction_val_pand_residual)
+    plt.axhline(y=0.0, color = "red")
+    plt.xlabel("prediction")
+    plt.ylabel("residual")
+    plt.title("residual vs fitted ")
+    plt.show()
+
+
+    ## residual vs leverage graph data
+
+    residual_graph
+    # extreme value in the predictor colm
+    prediction_col_extremeval = lr_prediction_quantile.agg({"prediction": "max"})
+    prediction_col_extremeval.show()
+
+    ## scale location graph data
+
+    residual_graph.show()
+    prediction_col = lr_prediction_quantile.select("prediction")
+
+    prediction_col.show()
 
     return str(json.dumps(json_response)).encode("utf-8")
 
-    # matplot visualization
-    #
-    # plt.scatter(coefficient_t,intercept_t , color="r")
-    # plt.show()
+
 
 #
 # Linear_reg(dataset_add, feature_colm, label_colm)
