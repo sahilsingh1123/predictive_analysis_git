@@ -2,9 +2,8 @@ from pyspark.sql import SparkSession
 from pyspark.ml.feature import VectorAssembler
 from pyspark.ml.regression import LinearRegression
 from pyspark.sql.functions import col
-
-
-
+import csv
+from itertools import izip
 import json
 
 spark = SparkSession.builder.appName("predictive_Analysis").master("local[*]").getOrCreate()
@@ -120,18 +119,41 @@ def Linear_reg(dataset_add, feature_colm, label_colm):
 
     # DATA VISUALIZATION PART
 
-    ## finding the quantile in the dataset
+    ## finding the quantile in the dataset(Q_Q plot)
+    import matplotlib.pyplot as plt
 
-    quantile_label = lr_prediction_quantile.approxQuantile("MPG", [0.25, 0.50, 0.75, 0.99], 0.01)
+    y = 0.1
+    x=[]
+
+    for i in range(0,90):
+        x.append(y)
+        y=round(y+0.01,2)
+
+    for z in x:
+        print ("~~~~~   ",z)
+
+
+
+
+    quantile_label = lr_prediction_quantile.approxQuantile("MPG", x, 0.01)
     print quantile_label
-    quantile_prediction = lr_prediction_quantile.approxQuantile("prediction", [0.25, 0.50, 0.75, 0.99], 0.01)
+    quantile_prediction = lr_prediction_quantile.approxQuantile("prediction", x, 0.01)
     print quantile_prediction
+
+
+    with open('Q_Q_plot.csv', 'w') as Q_Q:
+        writer_Q_Q = csv.writer(Q_Q)
+        writer_Q_Q.writerows(izip(quantile_label, quantile_prediction))
+
+
+    plt.scatter(quantile_label, quantile_prediction)
+    plt.show()
+
 
     ## finding the residual vs fitted graph data
 
 
 
-    import matplotlib.pyplot as plt
 
     plt.scatter(prediction_val_pand_predict,prediction_val_pand_residual)
     plt.axhline(y=0.0, color = "red")
@@ -140,20 +162,36 @@ def Linear_reg(dataset_add, feature_colm, label_colm):
     plt.title("residual vs fitted ")
     plt.show()
 
+    # creating the csv file and writitng into it
+
+
+
+    with open('residual_vs_fitted.csv', 'w') as r_f:
+        writer_r_f = csv.writer(r_f)
+        writer_r_f.writerows(izip(prediction_val_pand_predict, prediction_val_pand_residual))
+
 
     ## residual vs leverage graph data
 
-    residual_graph
+    prediction_val_pand_residual
     # extreme value in the predictor colm
     prediction_col_extremeval = lr_prediction_quantile.agg({"prediction": "max"})
     prediction_col_extremeval.show()
 
+    # plt.plot(prediction_col_extremeval, prediction_val_pand_residual)
+    # plt.show()
+
     ## scale location graph data
 
-    residual_graph.show()
-    prediction_col = lr_prediction_quantile.select("prediction")
-
-    prediction_col.show()
+    # print (prediction_val_pand_residual)
+    # prediction_val_pand_predict
+    # import math
+    # sqrt_residual=[]
+    # for x in prediction_val_pand_residual:
+    #     # sqrt_residual.append(math.sqrt(x))
+    #     print ("____________________  ",x)
+    #
+    # print sqrt_residual
 
     return str(json.dumps(json_response)).encode("utf-8")
 
