@@ -68,6 +68,9 @@ def Linear_reg(dataset_add, feature_colm, label_colm):
 
     prediction = regressor.evaluate(test_data)
 
+    VI_IMP = 2
+
+
 
 
     prediction_val =    prediction.predictions
@@ -183,15 +186,27 @@ def Linear_reg(dataset_add, feature_colm, label_colm):
 
     ## scale location graph data
 
-    # print (prediction_val_pand_residual)
-    # prediction_val_pand_predict
-    # import math
-    # sqrt_residual=[]
-    # for x in prediction_val_pand_residual:
-    #     # sqrt_residual.append(math.sqrt(x))
-    #     print ("____________________  ",x)
-    #
-    # print sqrt_residual
+    prediction_val_pand_residual
+    prediction_val_pand_predict
+    prediction_val_pand_residual_abs = prediction_val_pand_residual.abs()
+    import math
+    sqrt_residual=[]
+    for x in prediction_val_pand_residual_abs:
+        sqrt_residual.append(math.sqrt(x))
+        print ("____________________  ",x)
+
+    sqrt_residual
+
+    plt.scatter(sqrt_residual, prediction_val_pand_predict)
+    plt.show()
+
+
+
+    with open('scale_location_plot.csv', 'w') as s_l:
+        writer_s_l = csv.writer(s_l)
+        writer_s_l.writerows(izip(prediction_val_pand_predict, prediction_val_pand_residual))
+
+
 
     return str(json.dumps(json_response)).encode("utf-8")
 
