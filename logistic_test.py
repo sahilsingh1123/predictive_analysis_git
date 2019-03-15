@@ -7,8 +7,8 @@ spark = SparkSession.builder.appName("predictive_Analysis").master("local[*]").g
 spark.sparkContext.setLogLevel("ERROR")
 
 dataset_add = "/home/fidel/mltest/bank.csv"
-features = ["default", "housing", "marital"]
-label = "loan"
+features = ['job', 'marital', 'education', 'default', 'housing', 'loan', 'contact', 'poutcome']
+label = "y"
 
 
 class logistic_reg:
@@ -53,10 +53,19 @@ class logistic_reg:
 
         lrModel = lr.fit(train_data)
 
+        # import matplotlib.pyplot as plt
+        # import numpy as np
+        #
+        # beta = np.sort(lrModel.coefficientMatrix)
+        #
+        # plt.plot(beta)
+        # plt.ylabel("beta coefficients")
+        # plt.show()
+
 
         prediction = lrModel.transform(test_data)
         prediction.groupBy("label", "prediction").count().show()
-        prediction.show()
+        prediction.show(100)
 
         # print the coefficients and the intercept for the logistic regression
         #
@@ -104,7 +113,20 @@ class logistic_reg:
         fMeasure = training_summary.weightedFMeasure()
         precision = training_summary.weightedPrecision
         recall = training_summary.weightedRecall
+
         print("Accuracy: %s\nFPR: %s\nTPR: %s\nF-measure: %s\nPrecision: %s\nRecall: %s"
               % (accuracy, falsePositiveRate, truePositiveRate, fMeasure, precision, recall))
+
+
+
+        # evaluating the model on test dataset
+
+        from pyspark.ml.evaluation import BinaryClassificationEvaluator
+
+        evaluator = BinaryClassificationEvaluator()
+        print ('test area under roc : ', evaluator.evaluate(prediction))
+
+
+
 
     Logistic_regression(dataset_add, features, label)
