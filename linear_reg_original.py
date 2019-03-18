@@ -83,9 +83,9 @@ def Linear_reg(dataset_add, feature_colm, label_colm):
 
 
     prediction_val_pand_residual = prediction_val_pand["residual_vall"]
-    print prediction_val_pand_residual
+    # print prediction_val_pand_residual
     prediction_val_pand_predict = prediction_val_pand["prediction"]
-    print prediction_val_pand_predict
+    # print prediction_val_pand_predict
 
 
 
@@ -98,7 +98,7 @@ def Linear_reg(dataset_add, feature_colm, label_colm):
     lr_prediction.groupBy("MPG", "prediction").count().show()
 
     lr_prediction_quantile = lr_prediction.select(label_colm, "prediction")
-    lr_prediction_quantile.show()
+    # lr_prediction_quantile.show()
 
     training_summary = regressor.summary
 
@@ -131,17 +131,17 @@ def Linear_reg(dataset_add, feature_colm, label_colm):
     for i in range(0,90):
         x.append(y)
         y=round(y+0.01,2)
-
-    for z in x:
-        print ("~~~~~   ",z)
-
+    #
+    # for z in x:
+    #     print ("~~~~~   ",z)
+    #
 
 
 
     quantile_label = lr_prediction_quantile.approxQuantile("MPG", x, 0.01)
-    print quantile_label
+    # print quantile_label
     quantile_prediction = lr_prediction_quantile.approxQuantile("prediction", x, 0.01)
-    print quantile_prediction
+    # print quantile_prediction
 
 
     with open('Q_Q_plot.csv', 'w') as Q_Q:
@@ -179,7 +179,7 @@ def Linear_reg(dataset_add, feature_colm, label_colm):
     prediction_val_pand_residual
     # extreme value in the predictor colm
     prediction_col_extremeval = lr_prediction_quantile.agg({"prediction": "max"})
-    prediction_col_extremeval.show()
+    # prediction_col_extremeval.show()
 
     # plt.plot(prediction_col_extremeval, prediction_val_pand_residual)
     # plt.show()
@@ -193,7 +193,7 @@ def Linear_reg(dataset_add, feature_colm, label_colm):
     sqrt_residual=[]
     for x in prediction_val_pand_residual_abs:
         sqrt_residual.append(math.sqrt(x))
-        print ("____________________  ",x)
+        # print ("____________________  ",x)
 
     sqrt_residual
 
@@ -204,7 +204,7 @@ def Linear_reg(dataset_add, feature_colm, label_colm):
 
     with open('scale_location_plot.csv', 'w') as s_l:
         writer_s_l = csv.writer(s_l)
-        writer_s_l.writerows(izip(prediction_val_pand_predict, prediction_val_pand_residual))
+        writer_s_l.writerows(izip(prediction_val_pand_predict, sqrt_residual))
 
 
 
