@@ -77,9 +77,9 @@ def Linear_reg(dataset_add, feature_colm, label_colm):
     prediction_val.show()
 
 
-    prediction_val_pand = prediction_val.select("MPG", "prediction").toPandas()
+    prediction_val_pand = prediction_val.select(label_colm, "prediction").toPandas()
 
-    prediction_val_pand = prediction_val_pand.assign(residual_vall=prediction_val_pand["MPG"] - prediction_val_pand["prediction"])
+    prediction_val_pand = prediction_val_pand.assign(residual_vall=prediction_val_pand[label_colm] - prediction_val_pand["prediction"])
 
 
     prediction_val_pand_residual = prediction_val_pand["residual_vall"]
@@ -95,7 +95,7 @@ def Linear_reg(dataset_add, feature_colm, label_colm):
 
     lr_prediction = regressor.transform(test_data)
 
-    lr_prediction.groupBy("MPG", "prediction").count().show()
+    lr_prediction.groupBy(label_colm, "prediction").count().show()
 
     lr_prediction_quantile = lr_prediction.select(label_colm, "prediction")
     # lr_prediction_quantile.show()
@@ -107,18 +107,45 @@ def Linear_reg(dataset_add, feature_colm, label_colm):
     print("numof_Iterations...%d\n" % training_summary.totalIterations)
     print("ObjectiveHistory...%s\n" % str(training_summary.objectiveHistory))
     print("RMSE...%f\n" % training_summary.rootMeanSquaredError)
+    RMSE = training_summary.rootMeanSquaredError
     print("MSE....%f\n" % training_summary.meanSquaredError)
+    MSE = training_summary.meanSquaredError
     print("r**2(r-square)....::%f\n" % training_summary.r2)
+    r_square = training_summary.r2
     print("r**2(r-square adjusted)....%f\n" % training_summary.r2adj)
+    adjsted_r_square = training_summary.r2adj
     print("deviance residuals %s" % str(training_summary.devianceResiduals))
     training_summary.residuals.show()
     residual_graph = training_summary.residuals
     residual_graph_pandas = residual_graph.toPandas()
     print("coefficient standard errors: \n" + str(training_summary.coefficientStandardErrors))
+    coefficient_error = str(training_summary.coefficientStandardErrors)
     print(" Tvalues :\n" + str(training_summary.tValues))
+    T_values = str(training_summary.tValues)
     print(" p values :\n" + str(training_summary.pValues))
+    P_values = str(training_summary.pValues)
 
-    json_response = {"adjusted r**2 value" : training_summary.r2adj}
+
+    # creating the dictionary for storing the result
+
+    json_response = {
+
+        "Intercept" : intercept_t,
+        "Coefficients" : coefficient_t,
+        "RMSE" : RMSE,
+        "MSE" : MSE,
+        "R_square" : r_square,
+        "Adj_R_square" : adjsted_r_square,
+        "Coefficient_error" : coefficient_error,
+        "T_value" : T_values,
+        "P_value" : P_values
+
+
+    }
+
+    print json_response
+
+    # json_response = {"adjusted r**2 value" : training_summary.r2adj}
 
     # DATA VISUALIZATION PART
 
@@ -138,7 +165,7 @@ def Linear_reg(dataset_add, feature_colm, label_colm):
 
 
 
-    quantile_label = lr_prediction_quantile.approxQuantile("MPG", x, 0.01)
+    quantile_label = lr_prediction_quantile.approxQuantile(label_colm, x, 0.01)
     # print quantile_label
     quantile_prediction = lr_prediction_quantile.approxQuantile("prediction", x, 0.01)
     # print quantile_prediction
@@ -206,7 +233,7 @@ def Linear_reg(dataset_add, feature_colm, label_colm):
         writer_s_l = csv.writer(s_l)
         writer_s_l.writerows(izip(prediction_val_pand_predict, sqrt_residual))
 
-
+    # dumping the dictionary into json object
 
     return str(json.dumps(json_response)).encode("utf-8")
 
