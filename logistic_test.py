@@ -65,7 +65,7 @@ class logistic_reg:
 
         prediction = lrModel.transform(test_data)
         prediction.groupBy("label", "prediction").count().show()
-        prediction.show(100)
+        prediction.show()
 
         # print the coefficients and the intercept for the logistic regression
         #
@@ -122,9 +122,16 @@ class logistic_reg:
         # evaluating the model on test dataset
 
         from pyspark.ml.evaluation import BinaryClassificationEvaluator
+        # from pyspark.ml.classification import BinaryLogisticRegressionTrainingSummary
+        #
+        #
+        # training_sum = BinaryLogisticRegressionTrainingSummary(lrModel)
+        # print training_sum.areaUnderROC()
+
 
         evaluator = BinaryClassificationEvaluator()
         print ('test area under roc : ', evaluator.evaluate(prediction))
+
 
 
 
