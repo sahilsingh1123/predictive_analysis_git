@@ -18,6 +18,8 @@ class logistic_reg:
 
         dataset.show()
 
+        dataset.groupBy("y").count().show()
+
         # using the rformula for indexing, encoding and vectorising
 
         f = ""
@@ -38,6 +40,10 @@ class logistic_reg:
 
         output_2.show()
 
+        # splitting the dataset into train and test
+
+        train_data, test_data = output_2.randomSplit([0.75, 0.25], seed = 40)
+
         # implementing the logistic regression
         lr1 =LogisticRegression()
 
@@ -51,15 +57,17 @@ class logistic_reg:
 
         y= 0.1
         # x=[]
-        for i in range(0,9):
+        for i in range(0,3):
             y=round(y+0.1,2)
 
-            lr = LogisticRegression(maxIter=5, regParam=0.1, elasticNetParam=1.0, threshold=y)
+            lr = LogisticRegression(maxIter=5, regParam=0.1, elasticNetParam=1.0, threshold=0.3)
+
+
 
             # fit the model
 
 
-            lrModel = lr.fit(output_2)
+            lrModel = lr.fit(train_data)
             lrModel
 
             # print the coefficients and the intercept for the logistic regression
@@ -164,14 +172,16 @@ class logistic_reg:
         print recall_list
 
         import matplotlib.pyplot as plt
-
-        plt.plot(recall_list, FPR_list)
-        plt.show()
+        #
+        # plt.plot(recall_list, FPR_list)
+        # plt.show()
 
         #
         # fpr = [0.0,0.0,0.0,0.0,0.003067484662576687, 0.003067484662576687, 0.006134969325153374, 0.11042944785276074, 0.1165644171779141, 0.1165644171779141, 0.23006134969325154, 0.9723926380368099, 0.9846625766871165 ]
         # tpr = [0.0, 0.09767441860465116, 0.10232558139534884, 0.13488372093023257 ,0.17674418604651163 ,0.3674418604651163 , 0.37209302325581395  , 0.7534883720930232, 0.8651162790697674 , 0.8697674418604651 , 0.9069767441860465, 0.9953488372093023, 1.0]
+        # data visualization
 
+        # ROC graph
         fpr = roc.select("FPR").toPandas()
 
         tpr = roc.select("TPR").toPandas()
@@ -179,6 +189,30 @@ class logistic_reg:
 
         plt.plot(fpr, tpr)
         plt.show()
+
+
+        # PR graph
+
+        pr_recall = pr.select("recall").toPandas()
+        pr_precision = pr.select("precision").toPandas()
+
+        plt.plot(pr_precision,pr_recall)
+        plt.show()
+
+
+        # now applying the fit on the test data
+
+
+        prediction_val = lrModel.transform(test_data)
+        prediction_val.groupBy("label", "prediction").count().show()
+        prediction_val.show()
+
+        prediction_val.groupBy("prediction").count().show()
+
+        prediction_val.groupBy("prediction", "probability").count().show()
+
+
+
 
 
     Logistic_regression(dataset_add, features, label)

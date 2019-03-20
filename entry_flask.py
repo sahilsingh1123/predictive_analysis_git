@@ -6,8 +6,8 @@ import json
 import linear_reg_original
 from linear_reg_original import Linear_reg
 
-
 app = Flask(__name__)
+
 @app.route("/", methods=["POST", "GET"])
 
 def root():
@@ -16,7 +16,7 @@ def root():
     requestData = json.loads(requestString)
     print("Request data ", requestData)
 
-    linear_regression = Linear_reg()
+
     hdfsLocation = ''
 
     responseData = {}
@@ -30,11 +30,10 @@ def root():
     algo_name = requestData.get("algorithm_name")
     print ("algo name ", algo_name)
 
-
     responseData = ''
 
     try:
-        if algo_name == "linear regression":
+        if algo_name == "linear_reg":
             responseData = linear_reg_original.Linear_reg(dataset_add=fileLocation, feature_colm=feature_colm_req, label_colm=label_colm_req)
 
     except Exception as e:
@@ -44,3 +43,8 @@ def root():
 
 
     return jsonify(responseData)
+if (__name__=='__main__'):
+
+    app.run(host='10.171.0.173', port = 3333, debug=True)
+
+

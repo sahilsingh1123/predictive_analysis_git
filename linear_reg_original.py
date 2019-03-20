@@ -4,6 +4,7 @@ from pyspark.ml.regression import LinearRegression
 from pyspark.sql.functions import col
 import csv
 from itertools import izip
+from more_itertools import unzip
 import json
 
 spark = SparkSession.builder.appName("predictive_Analysis").master("local[*]").getOrCreate()
@@ -20,9 +21,9 @@ def Linear_reg(dataset_add, feature_colm, label_colm):
     dataset.show()
 
     # renaming the colm
-    print label_colm
+    print (label_colm)
     dataset.withColumnRenamed(label_colm,"label")
-    print label_colm
+    print (label_colm)
     dataset.show()
 
 
@@ -143,7 +144,7 @@ def Linear_reg(dataset_add, feature_colm, label_colm):
 
     }
 
-    print json_response
+    print (json_response)
 
     # json_response = {"adjusted r**2 value" : training_summary.r2adj}
 
