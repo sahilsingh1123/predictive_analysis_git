@@ -24,6 +24,4 @@ def application(data_add, feat_col, label_col, algo):
     return iter([response_data])
 
 
-
-
 application(dataset_add, feature_colm, label_colm, algorithm)
