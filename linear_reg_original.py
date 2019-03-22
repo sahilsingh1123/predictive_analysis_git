@@ -3,12 +3,14 @@ from pyspark.ml.feature import VectorAssembler
 from pyspark.ml.regression import LinearRegression
 from pyspark.sql.functions import col
 import csv
-from itertools import izip
+# from itertools import izip
 from more_itertools import unzip
 import json
 
 spark = SparkSession.builder.appName("predictive_Analysis").master("local[*]").getOrCreate()
 spark.sparkContext.setLogLevel("ERROR")
+
+
 
 #
 # dataset_add = "/home/fidel/mltest/auto-miles-per-gallon.csv"
@@ -174,7 +176,7 @@ def Linear_reg(dataset_add, feature_colm, label_colm):
 
     with open('Q_Q_plot.csv', 'w') as Q_Q:
         writer_Q_Q = csv.writer(Q_Q)
-        writer_Q_Q.writerows(izip(quantile_label, quantile_prediction))
+        writer_Q_Q.writerows((quantile_label, quantile_prediction))
 
 
     plt.scatter(quantile_label, quantile_prediction)
@@ -199,7 +201,7 @@ def Linear_reg(dataset_add, feature_colm, label_colm):
 
     with open('residual_vs_fitted.csv', 'w') as r_f:
         writer_r_f = csv.writer(r_f)
-        writer_r_f.writerows(izip(prediction_val_pand_predict, prediction_val_pand_residual))
+        writer_r_f.writerows((prediction_val_pand_predict, prediction_val_pand_residual))
 
 
     ## residual vs leverage graph data
@@ -232,13 +234,19 @@ def Linear_reg(dataset_add, feature_colm, label_colm):
 
     with open('scale_location_plot.csv', 'w') as s_l:
         writer_s_l = csv.writer(s_l)
-        writer_s_l.writerows(izip(prediction_val_pand_predict, sqrt_residual))
+        writer_s_l.writerows((prediction_val_pand_predict, sqrt_residual))
 
     # dumping the dictionary into json object
 
     return str(json.dumps(json_response)).encode("utf-8")
 
+def Main():
+     print ("main is called")
+
 
 
 #
 # Linear_reg(dataset_add, feature_colm, label_colm)
+
+# if __name__== "__main__":
+#     Linear_reg()
