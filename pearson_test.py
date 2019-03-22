@@ -17,7 +17,7 @@ if __name__ == '__main__':
     dataset.show()
 
     columns = ["MPG", "CYLINDERS", "DISPLACEMENT", "WEIGHT", "ACCELERATION"]
-    print columns
+    print (columns)
 
     # correlation
 
