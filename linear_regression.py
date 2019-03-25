@@ -142,6 +142,8 @@ if __name__ == '__main__':
     prediction_val =    prediction_va.predictions
     prediction_val.show()
 
+    #############################################################################################################
+
 
 
     prediction_val_pand = prediction_val.select("MPG", "prediction").toPandas()
@@ -156,9 +158,28 @@ if __name__ == '__main__':
 
     prediction_val_pand_residual = prediction_val_pand["residual_vall"]
     print (prediction_val_pand_residual)
+
+
+
+
     prediction_val_pand_predict = prediction_val_pand["prediction"]
-    # prediction_val_pand_predict_tosparkdf = spark.createDataFrame(prediction_val_pand_predict,FloatType())
-    # prediction_val_pand_predict_tosparkdf.show()
+    prediction_val_pand_predict_tosparkdf = spark.createDataFrame(prediction_val_pand_predict, FloatType())
+    prediction_val_pand_residual_tospark = spark.createDataFrame(prediction_val_pand_residual, FloatType())
+    prediction_val_pand_predict_tosparkdf.show()
+    prediction_val_pand_predict_tosparkdf.write.parquet('hdfs://10.171.0.181:9000/dev/dmxdeepinsight/datasets/temp.parquet',mode='overwrite')
+
+    import pyspark.sql.functions as f
+
+    residual_graph = prediction_val_pand_residual_tospark.withColumn('row_index', f.monotonically_increasing_id())
+    lr_prediction_onlypred = prediction_val_pand_predict_tosparkdf.withColumn('row_index', f.monotonically_increasing_id())
+
+    finaldataframe = residual_graph.join(lr_prediction_onlypred, on=["row_index"]).sort("row_index").drop("row_index")
+
+    finaldataframe.show()
+
+
+##################################################################################################################
+
     import matplotlib.pyplot as plt
 
     plt.scatter(prediction_val_pand_predict,prediction_val_pand_residual)

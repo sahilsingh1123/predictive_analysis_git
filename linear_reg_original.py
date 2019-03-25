@@ -169,14 +169,14 @@ def Linear_reg(dataset_add, feature_colm, label_colm):
         length = len(quantile_label)
 
         for i in range(0,len(quantile_label)):
-            Q_label_pred += str(quantile_label[i]) + '|'  +  str(quantile_prediction[i]) + '\n'
+            Q_label_pred += str(quantile_label[i]) + 't'  +  str(quantile_prediction[i]) + 'n'
 
 
-
-
-        with open('Q_Q_plot.csv', 'w') as Q_Q:
-            writer_Q_Q = csv.writer(Q_Q)
-            writer_Q_Q.writerows((quantile_label, quantile_prediction))
+        #
+        #
+        # with open('Q_Q_plot.csv', 'w') as Q_Q:
+        #     writer_Q_Q = csv.writer(Q_Q)
+        #     writer_Q_Q.writerows((quantile_label, quantile_prediction))
 
         plt.scatter(quantile_label, quantile_prediction)
         # plt.show()
@@ -198,12 +198,12 @@ def Linear_reg(dataset_add, feature_colm, label_colm):
         length = len(prediction_val_pand_residual)
 
         for i in range(0, len(prediction_val_pand_residual)):
-            fitted_residual += str(prediction_val_pand_predict[i]) + '|' + str(prediction_val_pand_residual[i]) + '\n'
+            fitted_residual += str(prediction_val_pand_predict[i]) + 't' + str(prediction_val_pand_residual[i]) + 'n'
 
-
-        with open('residual_vs_fitted.csv', 'w') as r_f:
-            writer_r_f = csv.writer(r_f)
-            writer_r_f.writerows((prediction_val_pand_predict, prediction_val_pand_residual))
+        #
+        # with open('residual_vs_fitted.csv', 'w') as r_f:
+        #     writer_r_f = csv.writer(r_f)
+        #     writer_r_f.writerows((prediction_val_pand_predict, prediction_val_pand_residual))
 
         ## residual vs leverage graph data
 
@@ -240,11 +240,11 @@ def Linear_reg(dataset_add, feature_colm, label_colm):
         length = len(sqrt_residual)
 
         for i in range(0, len(sqrt_residual)):
-            scale_predict_residual += str(prediction_val_pand_predict[i]) + '|' + str(sqrt_residual[i]) + '\n'
-
-        with open('scale_location_plot.csv', 'w') as s_l:
-            writer_s_l = csv.writer(s_l)
-            writer_s_l.writerows((prediction_val_pand_predict, sqrt_residual))
+            scale_predict_residual += str(prediction_val_pand_predict[i]) + 't' + str(sqrt_residual[i]) + 'n'
+        #
+        # with open('scale_location_plot.csv', 'w') as s_l:
+        #     writer_s_l = csv.writer(s_l)
+        #     writer_s_l.writerows((prediction_val_pand_predict, sqrt_residual))
 
         # dumping the dictionary into json object
 
@@ -259,9 +259,9 @@ def Linear_reg(dataset_add, feature_colm, label_colm):
             "Coefficient_error": coefficient_error,
             "T_value": T_values,
             "P_value": P_values,
-            'Q_Q_plot': Q_label_pred,
-            'residual_fitted': fitted_residual,
-            'scale_location': scale_predict_residual
+            "Q_Q_plot": Q_label_pred,
+            "residual_fitted": fitted_residual,
+            "scale_location": scale_predict_residual
 
         }
 
