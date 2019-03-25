@@ -3,10 +3,13 @@ from pyspark.sql import SparkSession
 from pyspark.ml.feature import VectorAssembler
 
 from pyspark.ml.regression import LinearRegression
+from pyspark.sql.types import FloatType
 
 if __name__ == '__main__':
-    spark = SparkSession.builder.appName("predictive_analysis").master("local[*]").getOrCreate()
+    # spark = SparkSession.builder.appName("predictive_analysis").master("local[*]").getOrCreate()
 
+    spark = SparkSession.builder.appName("predictive_analysis").master(
+        "spark://fidel-Latitude-E5570:7077").getOrCreate()
     spark.sparkContext.setLogLevel("ERROR")
 
     dataset = spark.read.csv("/home/fidel/mltest/auto-miles-per-gallon.csv", header=True, inferSchema=True)
@@ -32,7 +35,7 @@ if __name__ == '__main__':
 
     # creating vector assembler
 
-    print "heloooo"
+    print ("heloooo")
 
     featureassembler = VectorAssembler(inputCols=["CYLINDERS", "WEIGHT", "ACCELERATION","DISPLACEMENT", "MODELYEAR"],
                                        outputCol="Independent features")
@@ -107,7 +110,7 @@ if __name__ == '__main__':
     regressor = LinearRegression(featuresCol="Independent features", labelCol="MPG")
     regressor = regressor.fit(train_data)
 
-    print regressor.numFeatures
+    print (regressor.numFeatures)
 
     #
     # model_fitted_y = regressor.fittedvalues
@@ -140,16 +143,22 @@ if __name__ == '__main__':
     prediction_val.show()
 
 
+
     prediction_val_pand = prediction_val.select("MPG", "prediction").toPandas()
+
+    prediction_val_pand_sprk = spark.createDataFrame(prediction_val_pand)
+    print (type(prediction_val_pand_sprk))
+    # prediction_val_pand_sprk.write.csv('/home/fidel/PycharmProjects/predictive_analysis_git', header=True, mode='append')
+
 
     prediction_val_pand = prediction_val_pand.assign(residual_vall=prediction_val_pand["MPG"] - prediction_val_pand["prediction"])
 
 
     prediction_val_pand_residual = prediction_val_pand["residual_vall"]
-    print prediction_val_pand_residual
+    print (prediction_val_pand_residual)
     prediction_val_pand_predict = prediction_val_pand["prediction"]
-    print prediction_val_pand_predict
-
+    # prediction_val_pand_predict_tosparkdf = spark.createDataFrame(prediction_val_pand_predict,FloatType())
+    # prediction_val_pand_predict_tosparkdf.show()
     import matplotlib.pyplot as plt
 
     plt.scatter(prediction_val_pand_predict,prediction_val_pand_residual)
@@ -157,9 +166,9 @@ if __name__ == '__main__':
     plt.xlabel("prediction")
     plt.ylabel("residual")
     plt.title("residual vs fitted ")
-    plt.show()
+    # plt.show()
 
-    print prediction_val_pand
+    print (prediction_val_pand)
 
     # import pandas as pd
     #
@@ -236,10 +245,10 @@ if __name__ == '__main__':
     import matplotlib.pyplot as plt
 
     data_iloc = dataset_pandas.iloc[0:9, :].values
-    print data_iloc
-    print dataset_pandas.mean()
-    print dataset_pandas.max()
-    print dataset_pandas.std()
+    # print data_iloc
+    # print dataset_pandas.mean()
+    # print dataset_pandas.max()
+    # print dataset_pandas.std()
 
     # plotting the graph
     # import pandas as pd
@@ -296,9 +305,9 @@ if __name__ == '__main__':
     ## finding the quantile in the dataset
 
     quantile_label = lr_prediction_quantile.approxQuantile("MPG", [0.25, 0.50, 0.75, 0.99], 0.01)
-    print quantile_label
+    # print quantile_label
     quantile_prediction = lr_prediction_quantile.approxQuantile("prediction", [0.25, 0.50, 0.75, 0.99], 0.01)
-    print quantile_prediction
+    # print quantile_prediction
 
     ## finding the residual vs fitted graph data
 

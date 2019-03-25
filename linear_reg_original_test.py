@@ -19,8 +19,15 @@ spark.sparkContext.setLogLevel("ERROR")
 
 def Linear_reg(dataset_add, feature_colm, label_colm):
     try:
-        dataset = spark.read.parquet(dataset_add)
+        dataset = spark.read.csv(dataset_add, header=True, inferSchema=True)
         dataset.show()
+
+
+        # renaming the colm
+        # print(label_colm)
+        # dataset.withColumnRenamed(label_colm, "label")
+        # print(label_colm)
+        # dataset.show()
 
         label = ''
         for y in label_colm:
@@ -28,11 +35,7 @@ def Linear_reg(dataset_add, feature_colm, label_colm):
 
         print(label)
 
-        # renaming the colm
-        # print (label)
-        # dataset.withColumnRenamed(label,"label")
-        # print (label)
-        # dataset.show()
+        # implementing the vector assembler
 
         featureassembler = VectorAssembler(inputCols=feature_colm,
                                            outputCol="Independent_features")
@@ -46,9 +49,15 @@ def Linear_reg(dataset_add, feature_colm, label_colm):
 
         finalized_data.show()
 
+
+
+
         # splitting the dataset into taining and testing
 
         train_data, test_data = finalized_data.randomSplit([0.75, 0.25], seed=40)
+
+
+
 
         # applying the model
 
@@ -61,6 +70,10 @@ def Linear_reg(dataset_add, feature_colm, label_colm):
 
         # pred = regressor.transform(test_data)
 
+
+
+
+
         # coefficeint & intercept
 
         print("coefficient : " + str(regressor.coefficients))
@@ -71,7 +84,13 @@ def Linear_reg(dataset_add, feature_colm, label_colm):
 
         prediction = regressor.evaluate(test_data)
 
-        VI_IMP = 2
+        # VI_IMP = 2
+
+
+
+
+
+
 
         prediction_val = prediction.predictions
         prediction_val.show()
@@ -86,6 +105,12 @@ def Linear_reg(dataset_add, feature_colm, label_colm):
         prediction_val_pand_predict = prediction_val_pand["prediction"]
         # print prediction_val_pand_predict
 
+
+
+
+
+
+
         # test_summary = prediction.summary
 
         # for test data
@@ -95,7 +120,13 @@ def Linear_reg(dataset_add, feature_colm, label_colm):
         lr_prediction.groupBy(label, "prediction").count().show()
 
         lr_prediction_quantile = lr_prediction.select(label, "prediction")
+        lr_prediction_onlypred = lr_prediction.select('prediction')
         # lr_prediction_quantile.show()
+
+
+
+
+
 
         training_summary = regressor.summary
 
@@ -111,8 +142,12 @@ def Linear_reg(dataset_add, feature_colm, label_colm):
         adjsted_r_square = training_summary.r2adj
         print("deviance residuals %s" % str(training_summary.devianceResiduals))
         training_summary.residuals.show()
-        residual_graph = training_summary.residuals
-        residual_graph_pandas = residual_graph.toPandas()
+        # residual_graph = training_summary.residuals
+        # test = (residual_graph, lr_prediction_onlypred)
+        # residual_graph.write.csv('/home/fidel/PycharmProjects/predictive_analysis_git', header=True, mode='append' )
+        # print(test)
+        # test.write.csv('/home/fidel/PycharmProjects/predictive_analysis_git', header=True, mode= 'append')
+        # residual_graph_pandas = residual_graph.toPandas()
         print("coefficient standard errors: \n" + str(training_summary.coefficientStandardErrors))
         coefficient_error = str(training_summary.coefficientStandardErrors)
         print(" Tvalues :\n" + str(training_summary.tValues))
@@ -120,27 +155,26 @@ def Linear_reg(dataset_add, feature_colm, label_colm):
         print(" p values :\n" + str(training_summary.pValues))
         P_values = str(training_summary.pValues)
 
+
+
+
+
         # creating the dictionary for storing the result
 
-        json_response = {
 
-            "Intercept": intercept_t,
-            "Coefficients": coefficient_t,
-            "RMSE": RMSE,
-            "MSE": MSE,
-            "R_square": r_square,
-            "Adj_R_square": adjsted_r_square,
-            "Coefficient_error": coefficient_error,
-            "T_value": T_values,
-            "P_value": P_values
-
-        }
 
         # json_response = coefficient_t
 
-        print(json_response)
+        # print(json_response)
 
         # json_response = {"adjusted r**2 value" : training_summary.r2adj}
+
+
+
+
+
+
+
 
         # DATA VISUALIZATION PART
 
@@ -163,7 +197,6 @@ def Linear_reg(dataset_add, feature_colm, label_colm):
         quantile_prediction = lr_prediction_quantile.approxQuantile("prediction", x, 0.01)
         # print quantile_prediction
 
-
         Q_label_pred=''
         print(len(quantile_label))
         length = len(quantile_label)
@@ -172,7 +205,7 @@ def Linear_reg(dataset_add, feature_colm, label_colm):
             Q_label_pred += str(quantile_label[i]) + '|'  +  str(quantile_prediction[i]) + '\n'
 
 
-
+        # print(str(Q_label_pred[i]))
 
         with open('Q_Q_plot.csv', 'w') as Q_Q:
             writer_Q_Q = csv.writer(Q_Q)
@@ -180,6 +213,12 @@ def Linear_reg(dataset_add, feature_colm, label_colm):
 
         plt.scatter(quantile_label, quantile_prediction)
         # plt.show()
+
+
+
+
+
+
 
         ## finding the residual vs fitted graph data
 
@@ -192,14 +231,12 @@ def Linear_reg(dataset_add, feature_colm, label_colm):
 
         # creating the csv file and writitng into it
 
-
         fitted_residual = ''
         print(len(prediction_val_pand_residual))
         length = len(prediction_val_pand_residual)
 
         for i in range(0, len(prediction_val_pand_residual)):
             fitted_residual += str(prediction_val_pand_predict[i]) + '|' + str(prediction_val_pand_residual[i]) + '\n'
-
 
         with open('residual_vs_fitted.csv', 'w') as r_f:
             writer_r_f = csv.writer(r_f)
@@ -214,6 +251,10 @@ def Linear_reg(dataset_add, feature_colm, label_colm):
 
         # plt.plot(prediction_col_extremeval, prediction_val_pand_residual)
         # plt.show()
+
+
+
+
 
         ## scale location graph data
 
@@ -231,9 +272,6 @@ def Linear_reg(dataset_add, feature_colm, label_colm):
         plt.scatter(sqrt_residual, prediction_val_pand_predict)
         # plt.show()
 
-
-
-
         scale_predict_residual=''
 
         print(len(sqrt_residual))
@@ -246,7 +284,14 @@ def Linear_reg(dataset_add, feature_colm, label_colm):
             writer_s_l = csv.writer(s_l)
             writer_s_l.writerows((prediction_val_pand_predict, sqrt_residual))
 
+
+
+
+
+
         # dumping the dictionary into json object
+
+        # json_response = {'run_status': 'success', 'PredictiveResponse': resultdf}
 
         json_response = {
 
@@ -259,30 +304,23 @@ def Linear_reg(dataset_add, feature_colm, label_colm):
             "Coefficient_error": coefficient_error,
             "T_value": T_values,
             "P_value": P_values,
-            'Q_Q_plot': Q_label_pred,
+            'Q_Q_plot' : Q_label_pred,
             'residual_fitted': fitted_residual,
-            'scale_location': scale_predict_residual
+            'scale_location' : scale_predict_residual
 
         }
 
-        # json_response = coefficient_t
-
-        print(json_response)
 
 
-
-
-
-        # json_response = {'run_status': 'success', 'PredictiveResponse': resultdf}
         return json_response
+
+
     except Exception as e:
         print('exception is =' + str(e))
 
 
-
-
 #
-# Linear_reg(dataset_add, feature_colm, label)
+# Linear_reg(dataset_add, feature_colm, label_colm)
 
 # if __name__== "__main__":
 #     Linear_reg()

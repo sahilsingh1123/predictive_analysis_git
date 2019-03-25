@@ -2,56 +2,71 @@ from pyspark.sql import SparkSession
 from pyspark.ml.feature import RFormula
 from pyspark.ml.stat import ChiSquareTest
 
-
-dataset_add= "/home/fidel/mltest/bank.csv"
-features = ["default","housing","loan"]
-label = "marital"
+#
+# dataset_add= "/home/fidel/mltest/heart.csv"
+# features_colm = ["age","sex","cp","trestbps","chol", "fbs", "restecg", "thalach", "exang", "oldpeak", "slope", "ca", "thal"]
+# print(features_colm.__len__())
+# label_colm = ["target"]
 
 
 spark = SparkSession.builder.appName("predictive_analysis").master("local[*]").getOrCreate()
 
 spark.sparkContext.setLogLevel("ERROR")
 
-class chi:
+def Chi_sqr(dataset_add, feature_colm, label_colm):
+    dataset = spark.read.csv(dataset_add, header=True, inferSchema=True)
 
-    def Chi_sqr(dataset_add, features, label):
-        dataset = spark.read.csv(dataset_add, header=True, inferSchema=True, sep=";")
+    dataset.show()
 
-        dataset.show()
+    # using the rformula for indexing, encoding and vectorising
 
-        # using the rformula for indexing, encoding and vectorising
+    label = ''
+    for y in label_colm:
+        label = y
 
-        f = ""
-        f = label+" ~ "
+    print(label)
 
-        for x in features:
-            f = f + x + "+"
-        f = f[:-1]
-        f = (f)
 
-        formula = RFormula(formula= f,
-                           featuresCol="features",
-                           labelCol= "label")
+    f = ""
+    f = label+" ~ "
 
-        output = formula.fit(dataset).transform(dataset)
+    for x in feature_colm:
+        f = f + x + "+"
+    f = f[:-1]
+    f = (f)
 
-        output.select("features", "label").show()
+    formula = RFormula(formula= f,
+                       featuresCol="features",
+                       labelCol= "label")
 
-        # chi selector
-        from pyspark.ml.feature import ChiSqSelector
+    length=feature_colm.__len__()
 
-        selector = ChiSqSelector(numTopFeatures=3, featuresCol="features", outputCol="selected_features", labelCol="label")
+    output = formula.fit(dataset).transform(dataset)
 
-        result = selector.fit(output).transform(output)
+    output.select("features", "label").show()
 
-        print("chi2 output with top %d features selected " % selector.getNumTopFeatures())
-        result.show()
+    # chi selector
+    from pyspark.ml.feature import ChiSqSelector
 
-        #runnin gfor the chi vallue test
+    selector = ChiSqSelector(numTopFeatures=length, featuresCol="features", outputCol="selected_features", labelCol="label")
 
-        r = ChiSquareTest.test(result, "selected_features", "label").head()
-        print("pValues: " + str(r.pValues))
-        print("degreesOfFreedom: " + str(r.degreesOfFreedom))
-        print("statistics: " + str(r.statistics))
+    result = selector.fit(output).transform(output)
 
-    Chi_sqr(dataset_add, features, label)
+    print("chi2 output with top %d features selected " % selector.getNumTopFeatures())
+    result.show()
+
+    #runnin gfor the chi vallue test
+
+    r = ChiSquareTest.test(result, "selected_features", "label").head()
+    print("pValues: " + str(r.pValues))
+    p_values = str(r.pValues)
+    print("degreesOfFreedom: " + str(r.degreesOfFreedom))
+
+    print("statistics: " + str(r.statistics))
+
+
+    json_response = {'pvalues' : p_values}
+
+    return json_response
+
+# Chi_sqr(dataset_add, features_colm, label_colm)
