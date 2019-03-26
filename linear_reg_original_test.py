@@ -2,9 +2,11 @@ from pyspark.sql import SparkSession
 from pyspark.ml.feature import VectorAssembler
 from pyspark.ml.regression import LinearRegression
 from pyspark.sql.functions import col
+from pyspark.sql.types import *
+import pyspark.sql.functions as f
 import csv
 # from itertools import izip
-from more_itertools import unzip
+# from more_itertools import unzip
 import json
 
 spark = SparkSession.builder.appName("predictive_Analysis").master("local[*]").getOrCreate()
@@ -205,13 +207,32 @@ def Linear_reg(dataset_add, feature_colm, label_colm):
             Q_label_pred += str(quantile_label[i]) + '|'  +  str(quantile_prediction[i]) + '\n'
 
 
+        # writing it to the hdfs in parquet file
+
+        # quantile_label_tospark = spark.createDataFrame(quantile_label, FloatType())
+        # quantile_label_tospark = quantile_label_tospark.withColumnRenamed("value", "Q_label")
+        #
+        # quantile_prediction_tospark = spark.createDataFrame(quantile_prediction, FloatType())
+        # quantile_prediction_tospark = quantile_prediction_tospark.withColumnRenamed("value", "Q_prediction")
+        #
+        # quant_label = quantile_label_tospark.withColumn('row_index', f.monotonically_increasing_id())
+        # quant_predtiction = quantile_prediction_tospark.withColumn('row_index', f.monotonically_increasing_id())
+        #
+        # final_quantile = quant_label.join(quant_predtiction,on=['row_index']).sort('row_index').drop('row_index')
+        #
+        # final_quantile.show()
+        #
+        # final_quantile.write.parquet('hdfs://10.171.0.181:9000/dev/dmxdeepinsight/datasets/Q_Q_plot.parquet',mode='overwrite')
+        #
+
+
         # print(str(Q_label_pred[i]))
 
-        with open('Q_Q_plot.csv', 'w') as Q_Q:
-            writer_Q_Q = csv.writer(Q_Q)
-            writer_Q_Q.writerows((quantile_label, quantile_prediction))
-
-        plt.scatter(quantile_label, quantile_prediction)
+        # with open('Q_Q_plot.csv', 'w') as Q_Q:
+        #     writer_Q_Q = csv.writer(Q_Q)
+        #     writer_Q_Q.writerows((quantile_label, quantile_prediction))
+        #
+        # plt.scatter(quantile_label, quantile_prediction)
         # plt.show()
 
 
@@ -241,6 +262,30 @@ def Linear_reg(dataset_add, feature_colm, label_colm):
         with open('residual_vs_fitted.csv', 'w') as r_f:
             writer_r_f = csv.writer(r_f)
             writer_r_f.writerows((prediction_val_pand_predict, prediction_val_pand_residual))
+
+
+        # parquet file writing
+
+
+        prediction_val_pand_predict_tospark = spark.createDataFrame(prediction_val_pand_predict, FloatType())
+        prediction_val_pand_predict_tospark = prediction_val_pand_predict_tospark.withColumnRenamed("value", "prediction")
+
+        prediction_val_pand_residual_tospark = spark.createDataFrame(prediction_val_pand_residual, FloatType())
+        prediction_val_pand_residual_tospark = prediction_val_pand_residual_tospark.withColumnRenamed("value", "residual")
+
+        pred_spark = prediction_val_pand_predict_tospark.withColumn('row_index', f.monotonically_increasing_id())
+        res_spark = prediction_val_pand_residual_tospark.withColumn('row_index', f.monotonically_increasing_id())
+
+        final_res_fitted = pred_spark.join(res_spark, on=['row_index'])\
+            .sort('row_index').drop('row_index')
+
+        final_res_fitted.show()
+
+        final_res_fitted.write.parquet('hdfs://10.171.0.181:9000/dev/dmxdeepinsight/datasets/residual_fitted_plot.parquet',
+                                     mode='overwrite')
+
+
+
 
         ## residual vs leverage graph data
 
@@ -280,9 +325,32 @@ def Linear_reg(dataset_add, feature_colm, label_colm):
         for i in range(0, len(sqrt_residual)):
             scale_predict_residual += str(prediction_val_pand_predict[i]) + '|' + str(sqrt_residual[i]) + '\n'
 
-        with open('scale_location_plot.csv', 'w') as s_l:
-            writer_s_l = csv.writer(s_l)
-            writer_s_l.writerows((prediction_val_pand_predict, sqrt_residual))
+        # with open('scale_location_plot.csv', 'w') as s_l:
+        #     writer_s_l = csv.writer(s_l)
+        #     writer_s_l.writerows((prediction_val_pand_predict, sqrt_residual))
+
+
+        # writing to the parquet
+
+        # prediction_val_pand_predict_tospark = spark.createDataFrame(prediction_val_pand_predict, FloatType())
+        # prediction_val_pand_predict_tospark = prediction_val_pand_predict_tospark.withColumnRenamed("value",
+        #                                                                                             "prediction")
+        #
+        # sqrt_residual_tospark= spark.createDataFrame(sqrt_residual, FloatType())
+        # sqrt_residual_tospark = sqrt_residual_tospark.withColumnRenamed("value",
+        #                                                                                               "sqrt_residual")
+        #
+        # pred_spark = prediction_val_pand_predict_tospark.withColumn('row_index', f.monotonically_increasing_id())
+        # res_spark = sqrt_residual_tospark.withColumn('row_index', f.monotonically_increasing_id())
+        #
+        # final_scale_fitted = pred_spark.join(res_spark,on=['row_index']) \
+        #     .sort('row_index').drop('row_index')
+        #
+        # final_scale_fitted.show()
+        #
+        # final_scale_fitted.write.parquet(
+        #     'hdfs://10.171.0.181:9000/dev/dmxdeepinsight/datasets/scale_location_plot.parquet',
+        #     mode='overwrite')
 
 
 

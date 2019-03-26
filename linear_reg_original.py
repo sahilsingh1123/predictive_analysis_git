@@ -4,7 +4,7 @@ from pyspark.ml.regression import LinearRegression
 from pyspark.sql.functions import col
 import csv
 # from itertools import izip
-from more_itertools import unzip
+# from more_itertools import unzip
 import json
 
 spark = SparkSession.builder.appName("predictive_Analysis").master("local[*]").getOrCreate()
