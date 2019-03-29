@@ -122,7 +122,7 @@ def Linear_reg(dataset_add, feature_colm, label_colm):
 
         # creating the dictionary for storing the result
 
-        json_response = {
+        table_response = {
 
             "Intercept": intercept_t,
             "Coefficients": coefficient_t,
@@ -138,7 +138,7 @@ def Linear_reg(dataset_add, feature_colm, label_colm):
 
         # json_response = coefficient_t
 
-        print(json_response)
+
 
         # json_response = {"adjusted r**2 value" : training_summary.r2adj}
 
@@ -248,20 +248,19 @@ def Linear_reg(dataset_add, feature_colm, label_colm):
 
         # dumping the dictionary into json object
 
-        json_response = {
-
-            "Intercept": intercept_t,
-            "Coefficients": coefficient_t,
-            "RMSE": RMSE,
-            "MSE": MSE,
-            "R_square": r_square,
-            "Adj_R_square": adjsted_r_square,
-            "Coefficient_error": coefficient_error,
-            "T_value": T_values,
-            "P_value": P_values,
+        graph_response = {
             "Q_Q_plot": Q_label_pred,
             "residual_fitted": fitted_residual,
             "scale_location": scale_predict_residual
+        }
+
+
+
+        json_response = {
+
+            'table_data': table_response,
+            'graph_data' : graph_response
+
 
         }
 
@@ -274,7 +273,7 @@ def Linear_reg(dataset_add, feature_colm, label_colm):
 
 
         # json_response = {'run_status': 'success', 'PredictiveResponse': resultdf}
-        return json_response
+        return (graph_response, table_response)
     except Exception as e:
         print('exception is =' + str(e))
 

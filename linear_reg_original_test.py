@@ -209,21 +209,21 @@ def Linear_reg(dataset_add, feature_colm, label_colm):
 
         # writing it to the hdfs in parquet file
 
-        # quantile_label_tospark = spark.createDataFrame(quantile_label, FloatType())
-        # quantile_label_tospark = quantile_label_tospark.withColumnRenamed("value", "Q_label")
-        #
-        # quantile_prediction_tospark = spark.createDataFrame(quantile_prediction, FloatType())
-        # quantile_prediction_tospark = quantile_prediction_tospark.withColumnRenamed("value", "Q_prediction")
-        #
-        # quant_label = quantile_label_tospark.withColumn('row_index', f.monotonically_increasing_id())
-        # quant_predtiction = quantile_prediction_tospark.withColumn('row_index', f.monotonically_increasing_id())
-        #
-        # final_quantile = quant_label.join(quant_predtiction,on=['row_index']).sort('row_index').drop('row_index')
-        #
-        # final_quantile.show()
-        #
-        # final_quantile.write.parquet('hdfs://10.171.0.181:9000/dev/dmxdeepinsight/datasets/Q_Q_plot.parquet',mode='overwrite')
-        #
+        quantile_label_tospark = spark.createDataFrame(quantile_label, FloatType())
+        quantile_label_tospark = quantile_label_tospark.withColumnRenamed("value", "Q_label")
+
+        quantile_prediction_tospark = spark.createDataFrame(quantile_prediction, FloatType())
+        quantile_prediction_tospark = quantile_prediction_tospark.withColumnRenamed("value", "Q_prediction")
+
+        quant_label = quantile_label_tospark.withColumn('row_index', f.monotonically_increasing_id())
+        quant_predtiction = quantile_prediction_tospark.withColumn('row_index', f.monotonically_increasing_id())
+
+        final_quantile = quant_label.join(quant_predtiction,on=['row_index']).sort('row_index').drop('row_index')
+
+        final_quantile.show()
+
+        final_quantile.write.parquet('hdfs://10.171.0.181:9000/dev/dmxdeepinsight/datasets/Q_Q_plot.parquet',mode='overwrite')
+
 
 
         # print(str(Q_label_pred[i]))
@@ -242,6 +242,29 @@ def Linear_reg(dataset_add, feature_colm, label_colm):
 
 
         ## finding the residual vs fitted graph data
+
+
+
+
+
+        prediction_val_pand_predict_tospark = spark.createDataFrame(prediction_val_pand_predict, FloatType())
+        prediction_val_pand_predict_tospark = prediction_val_pand_predict_tospark.withColumnRenamed("value", "prediction")
+
+        prediction_val_pand_residual_tospark = spark.createDataFrame(prediction_val_pand_residual, FloatType())
+        prediction_val_pand_residual_tospark = prediction_val_pand_residual_tospark.withColumnRenamed("value", "residual")
+
+        pred_spark = prediction_val_pand_predict_tospark.withColumn('row_index', f.monotonically_increasing_id())
+        res_spark = prediction_val_pand_residual_tospark.withColumn('row_index', f.monotonically_increasing_id())
+
+        final_res_fitted = pred_spark.join(res_spark, on=['row_index'])\
+            .sort('row_index').drop('row_index')
+
+        final_res_fitted.show()
+
+        final_res_fitted.write.parquet('hdfs://10.171.0.181:9000/dev/dmxdeepinsight/datasets/residual_fitted_plot.parquet',
+                                     mode='overwrite')
+
+
 
         plt.scatter(prediction_val_pand_predict, prediction_val_pand_residual)
         plt.axhline(y=0.0, color="red")
@@ -266,23 +289,6 @@ def Linear_reg(dataset_add, feature_colm, label_colm):
 
         # parquet file writing
 
-
-        prediction_val_pand_predict_tospark = spark.createDataFrame(prediction_val_pand_predict, FloatType())
-        prediction_val_pand_predict_tospark = prediction_val_pand_predict_tospark.withColumnRenamed("value", "prediction")
-
-        prediction_val_pand_residual_tospark = spark.createDataFrame(prediction_val_pand_residual, FloatType())
-        prediction_val_pand_residual_tospark = prediction_val_pand_residual_tospark.withColumnRenamed("value", "residual")
-
-        pred_spark = prediction_val_pand_predict_tospark.withColumn('row_index', f.monotonically_increasing_id())
-        res_spark = prediction_val_pand_residual_tospark.withColumn('row_index', f.monotonically_increasing_id())
-
-        final_res_fitted = pred_spark.join(res_spark, on=['row_index'])\
-            .sort('row_index').drop('row_index')
-
-        final_res_fitted.show()
-
-        final_res_fitted.write.parquet('hdfs://10.171.0.181:9000/dev/dmxdeepinsight/datasets/residual_fitted_plot.parquet',
-                                     mode='overwrite')
 
 
 
@@ -332,25 +338,25 @@ def Linear_reg(dataset_add, feature_colm, label_colm):
 
         # writing to the parquet
 
-        # prediction_val_pand_predict_tospark = spark.createDataFrame(prediction_val_pand_predict, FloatType())
-        # prediction_val_pand_predict_tospark = prediction_val_pand_predict_tospark.withColumnRenamed("value",
-        #                                                                                             "prediction")
-        #
-        # sqrt_residual_tospark= spark.createDataFrame(sqrt_residual, FloatType())
-        # sqrt_residual_tospark = sqrt_residual_tospark.withColumnRenamed("value",
-        #                                                                                               "sqrt_residual")
-        #
-        # pred_spark = prediction_val_pand_predict_tospark.withColumn('row_index', f.monotonically_increasing_id())
-        # res_spark = sqrt_residual_tospark.withColumn('row_index', f.monotonically_increasing_id())
-        #
-        # final_scale_fitted = pred_spark.join(res_spark,on=['row_index']) \
-        #     .sort('row_index').drop('row_index')
-        #
-        # final_scale_fitted.show()
-        #
-        # final_scale_fitted.write.parquet(
-        #     'hdfs://10.171.0.181:9000/dev/dmxdeepinsight/datasets/scale_location_plot.parquet',
-        #     mode='overwrite')
+        prediction_val_pand_predict_tospark = spark.createDataFrame(prediction_val_pand_predict, FloatType())
+        prediction_val_pand_predict_tospark = prediction_val_pand_predict_tospark.withColumnRenamed("value",
+                                                                                                    "prediction")
+
+        sqrt_residual_tospark= spark.createDataFrame(sqrt_residual, FloatType())
+        sqrt_residual_tospark = sqrt_residual_tospark.withColumnRenamed("value",
+                                                                                                      "sqrt_residual")
+
+        pred_spark = prediction_val_pand_predict_tospark.withColumn('row_index', f.monotonically_increasing_id())
+        res_spark = sqrt_residual_tospark.withColumn('row_index', f.monotonically_increasing_id())
+
+        final_scale_fitted = pred_spark.join(res_spark,on=['row_index']) \
+            .sort('row_index').drop('row_index')
+
+        final_scale_fitted.show()
+
+        final_scale_fitted.write.parquet(
+            'hdfs://10.171.0.181:9000/dev/dmxdeepinsight/datasets/scale_location_plot.parquet',
+            mode='overwrite')
 
 
 

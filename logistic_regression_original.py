@@ -103,7 +103,7 @@ class logistic_reg:
 
             print (" accuracy : ", training_summary.accuracy)
             accuracy_d = training_summary.accuracy
-            print accuracy_d
+            print (accuracy_d)
 
             fMeasure = training_summary.fMeasureByThreshold
 
@@ -119,7 +119,7 @@ class logistic_reg:
             objectiveHistory = training_summary.objectiveHistory
             print ("objectiveHistory")
             for objective in objectiveHistory:
-                print objective
+                print (objective)
 
 
             # for a multiclass we can inspect  a matrix on a per label basis
@@ -165,11 +165,11 @@ class logistic_reg:
             precision_list.append(precision)
             recall_list.append(recall)
 
-        print Accuracy_list
-        print FPR_list
-        print TPR_list
-        print precision_list
-        print recall_list
+        print (Accuracy_list)
+        print (FPR_list)
+        print (TPR_list)
+        print (precision_list)
+        print (recall_list)
 
         import matplotlib.pyplot as plt
         #

@@ -184,7 +184,8 @@ if __name__ == '__main__':
         finaldataframe = lr_prediction_onlypred.join(residual_graph, on=["row_index"]).sort("row_index").drop("row_index")
 
         finaldataframe.show()
-        finaldataframe.write.parquet('hdfs://10.171.0.181:9000/dev/dmxdeepinsight/datasets/test.parquet',mode='overwrite')
+        finaldataframe.write.parquet('hdfs://10.171.0.181:9000/dev/dmxdeepinsight/datasets/test.parquet',
+                                     mode='overwrite')
 
 
     ##################################################################################################################
