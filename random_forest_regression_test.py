@@ -7,6 +7,7 @@ from pyspark.ml.classification import RandomForestClassifier
 from pyspark.ml.feature import IndexToString, StringIndexer, VectorIndexer, VectorAssembler
 from pyspark.ml.evaluation import MulticlassClassificationEvaluator
 from pyspark.ml.feature import StringIndexer, OneHotEncoderEstimator
+from pearson_test_importance import Correlation_test_imp
 
 
 
@@ -18,7 +19,7 @@ spark.sparkContext.setLogLevel("ERROR")
 
 
 dataset_add = "/home/fidel/mltest/bank.csv"
-features = ['balance', 'day', 'duration', 'campaign','job', 'marital', 'education', 'default', 'housing', 'loan', 'contact', 'poutcome']
+features = ['balance', 'day', 'duration', 'campaign','job','y', 'marital', 'education', 'default', 'housing', 'loan', 'contact', 'poutcome']
 # features = ['age', 'balance', 'day', 'duration', 'campaign']
 label = ["age"]
 
@@ -62,7 +63,7 @@ def randomClassifier(dataset_add, feature_colm, label_colm):
         dataset = dataset.withColumnRenamed(label , 'indexed_'+ label)
 
 
-
+        dataset_pearson = dataset
 
         #
         # label_indexer = StringIndexer(inputCol=label, outputCol='indexed_'+label).fit(dataset)
@@ -130,8 +131,11 @@ def randomClassifier(dataset_add, feature_colm, label_colm):
 
 
 
+        # calling pearson test fuction
 
+        response_pearson_test = Correlation_test_imp(dataset=dataset_pearson, features = integer_features, label_col='indexed_'+ label)
 
+        print(response_pearson_test)
 
 
 

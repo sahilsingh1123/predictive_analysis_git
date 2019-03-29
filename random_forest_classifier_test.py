@@ -6,6 +6,7 @@ from pyspark.ml.classification import RandomForestClassifier
 from pyspark.ml.feature import IndexToString, StringIndexer, VectorIndexer, VectorAssembler
 from pyspark.ml.evaluation import MulticlassClassificationEvaluator
 from pyspark.ml.feature import StringIndexer, OneHotEncoderEstimator
+from chi_sqr_importance import chi_square_test
 
 
 
@@ -83,6 +84,8 @@ def randomClassifier(dataset_add, feature_colm, label_colm):
         print(indexed_features)
         print(encoded_features)
 
+        dataset_chi = dataset
+
         # combining both the features colm together
 
         final_features = integer_features + indexed_features
@@ -129,7 +132,12 @@ def randomClassifier(dataset_add, feature_colm, label_colm):
 
 
 
+        # calling the chi-square test function
 
+        response_chi_test = chi_square_test(dataset=dataset_chi, features= indexed_features, label_col='indexed_'+label)
+
+
+        print(response_chi_test)
 
 
 
@@ -202,7 +210,7 @@ def randomClassifier(dataset_add, feature_colm, label_colm):
         # Select example rows to display.
         # predictions.select("prediction", "label", "features").show(10)
 
-        print(model.featureImportances)
+        print('features_importance:-\n', model.featureImportances)
 
 
 
