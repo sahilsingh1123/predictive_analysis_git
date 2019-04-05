@@ -24,7 +24,7 @@ label = ["y"]
 
 def randomClassifier(dataset_add, feature_colm, label_colm):
     try:
-        dataset = spark.read.csv(dataset_add,  header=True, inferSchema=True, sep=";")
+        dataset = spark.read.parquet(dataset_add)
 
         dataset.show()
 
@@ -140,32 +140,6 @@ def randomClassifier(dataset_add, feature_colm, label_colm):
         print(response_chi_test)
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
         # renaming the colm
         # print (label)
         # dataset.withColumnRenamed(label,"label")
@@ -230,7 +204,7 @@ def randomClassifier(dataset_add, feature_colm, label_colm):
 
     except Exception as e :
         print("exception is  = " + str(e))
-
-if __name__== "__main__":
-    randomClassifier(dataset_add, features, label)
-
+#
+# if __name__== "__main__":
+#     randomClassifier(dataset_add, features, label)
+#

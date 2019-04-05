@@ -6,6 +6,8 @@ import json
 import linear_reg_original
 import pearson_corr_original
 import chi_sqr_original
+import random_forest_classifier_test
+import random_forest_regression_test
 
 app = Flask(__name__)
 
@@ -40,6 +42,12 @@ def root():
             responseData = pearson_corr_original.Correlation(dataset_add=fileLocation, feature_colm=feature_colm_req,label_colm=label_colm_req)
         elif algo_name == 'chi_square_test':
             responseData = chi_sqr_original.Chi_sqr(dataset_add=fileLocation, feature_colm=feature_colm_req, label_colm=label_colm_req)
+        elif algo_name == 'random_classifier':
+            responseData = random_forest_classifier_test.randomClassifier(dataset_add=fileLocation, feature_colm=feature_colm_req,
+                                                                           label_colm=label_colm_req)
+        elif algo_name == 'random_regressor':
+            responseData = random_forest_regression_test.randomClassifier(dataset_add=fileLocation, feature_colm=feature_colm_req,
+                                                                           label_colm=label_colm_req)
 
     except Exception as e:
         print ('exception is = ' + str(e))

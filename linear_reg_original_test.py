@@ -1,3 +1,4 @@
+from relationship import Relationship
 from pyspark.sql import SparkSession
 from pyspark.ml.feature import VectorAssembler
 from pyspark.ml.regression import LinearRegression
@@ -36,6 +37,129 @@ def Linear_reg(dataset_add, feature_colm, label_colm):
             label = y
 
         print(label)
+
+
+        dictionary_list = {'log_list':["CYLINDERS"],
+                           'sqrt_list': ["WEIGHT"],
+                           'cubic_list':["ACCELERATION"]}
+
+        relationship_val = ''
+
+        if relationship_val=='linear_reg':
+            print('linear relationship')
+        else:
+            dataset = Relationship(dataset, dictionary_list)
+
+        dataset.show()
+
+        # Relationship_val = 'log_list'
+        # Relationship_colm = ["CYLINDERS", "WEIGHT", "ACCELERATION", "DISPLACEMENT"]
+
+        #
+        #
+        # def Relation_dataset(Relationship_val, Relationship_colm, dataset):
+        #     # creating the udf
+        #     import math
+        #     from pyspark.sql.functions import udf
+        #     from pyspark.sql.functions import col
+        #
+        #     import numpy as np
+        #
+        #
+        #     def log_list(x):
+        #         return math.log(x)
+        #
+        #     def exponent_list(x):
+        #         return math.exp(x)
+        #
+        #     def square_list(x):
+        #         return x ** 2
+        #
+        #     def cubic_list(x):
+        #         return x ** 3
+        #
+        #     def quadritic_list(x):
+        #         return x ** 4
+        #
+        #     def sqrt_list(x):
+        #         return math.sqrt(x)
+        #
+        #     square_list_udf = udf(lambda y: square_list(y), FloatType())
+        #     log_list_udf = udf(lambda y: log_list(y), FloatType())
+        #     exponent_list_udf = udf(lambda y: exponent_list(y), FloatType())
+        #     cubic_list_udf = udf(lambda y: cubic_list(y), FloatType())
+        #     quadratic_list_udf = udf(lambda y: quadritic_list(y), FloatType())
+        #     sqrt_list_udf = udf(lambda y: sqrt_list(y), FloatType())
+        #
+        #     # spark.udf.register("squaredWithPython", square_list)
+        #
+        #     # square_list_udf = udf(lambda y: square_list(y), ArrayType(FloatType))
+        #
+        #     # square_list_udf = udf(lambda y: exponent_list(y), FloatType())
+        #     #
+        #
+        #     #
+        #     # # dataset.select('MPG', square_list_udf(col('MPG').cast(FloatType())).alias('MPG')).show()
+        #     #
+        #     # dataset.withColumn('MPG', square_list_udf(col('MPG').cast(FloatType()))).show()
+        #
+        #     # Relationship_val = 'square_list'
+        #     # Relationship_colm = ["CYLINDERS", "WEIGHT", "ACCELERATION", "DISPLACEMENT"]
+        #     # Relationship_model = ['log_list', 'exponent_list', 'square_list', 'cubic_list', 'quadritic_list',
+        #     #                       'sqrt_list']
+        #
+        #     if Relationship_val == 'square_list':
+        #         for colm in Relationship_colm:
+        #             # Relationship_val.strip("'")
+        #             # square_list_udf = udf(lambda y: square_list(y), FloatType())
+        #             dataset = dataset.withColumn(colm, square_list_udf(col(colm).cast(FloatType())))
+        #     elif Relationship_val == 'log_list':
+        #         for colm in Relationship_colm:
+        #             # Relationship_val.strip("'")
+        #             # square_list_udf = udf(lambda y: square_list(y), FloatType())
+        #             dataset=dataset.withColumn(colm, log_list_udf(col(colm).cast(FloatType())))
+        #     elif Relationship_val == 'exponent_list':
+        #         for colm in Relationship_colm:
+        #             # Relationship_val.strip("'")
+        #             # square_list_udf = udf(lambda y: square_list(y), FloatType())
+        #             dataset=dataset.withColumn(colm, exponent_list_udf(col(colm).cast(FloatType())))
+        #     elif Relationship_val == 'cubic_list':
+        #         for colm in Relationship_colm:
+        #             # Relationship_val.strip("'")
+        #             # square_list_udf = udf(lambda y: square_list(y), FloatType())
+        #             dataset = dataset.withColumn(colm, cubic_list_udf(col(colm).cast(FloatType())))
+        #     elif Relationship_val == 'quadritic_list':
+        #         for colm in Relationship_colm:
+        #             # Relationship_val.strip("'")
+        #             # square_list_udf = udf(lambda y: square_list(y), FloatType())
+        #             dataset = dataset.withColumn(colm, quadratic_list_udf(col(colm).cast(FloatType())))
+        #     elif Relationship_val == 'sqrt_list':
+        #         for colm in Relationship_colm:
+        #             # Relationship_val.strip("'")
+        #             # square_list_udf = udf(lambda y: square_list(y), FloaType())
+        #             dataset = dataset.withColumn(colm, sqrt_list_udf(col(colm).cast(FloatType())))
+        #
+        #
+        #
+        #     else:
+        #         print('not found')
+        #
+        #
+        #
+        #     return dataset
+        #
+        #
+        # if Relationship_val =='linear_relation':
+        #     print('linear relation')
+        # else:
+        #     dataset = Relation_dataset(Relationship_val, Relationship_colm, dataset)
+        #
+
+
+
+
+
+
 
         # implementing the vector assembler
 
@@ -222,7 +346,7 @@ def Linear_reg(dataset_add, feature_colm, label_colm):
 
         final_quantile.show()
 
-        final_quantile.write.parquet('hdfs://10.171.0.181:9000/dev/dmxdeepinsight/datasets/Q_Q_plot.parquet',mode='overwrite')
+        final_quantile.write.parquet('hdfs://10.171.0.181:9000/dev/dmxdeepinsight/datasets/Q_Q_PLOT.parquet',mode='overwrite')
 
 
 
@@ -261,7 +385,7 @@ def Linear_reg(dataset_add, feature_colm, label_colm):
 
         final_res_fitted.show()
 
-        final_res_fitted.write.parquet('hdfs://10.171.0.181:9000/dev/dmxdeepinsight/datasets/residual_fitted_plot.parquet',
+        final_res_fitted.write.parquet('hdfs://10.171.0.181:9000/dev/dmxdeepinsight/datasets/RESIDUAL_FITTED_PLOT.parquet',
                                      mode='overwrite')
 
 
@@ -355,7 +479,7 @@ def Linear_reg(dataset_add, feature_colm, label_colm):
         final_scale_fitted.show()
 
         final_scale_fitted.write.parquet(
-            'hdfs://10.171.0.181:9000/dev/dmxdeepinsight/datasets/scale_location_plot.parquet',
+            'hdfs://10.171.0.181:9000/dev/dmxdeepinsight/datasets/SCALE_LOCATION_PLOT.parquet',
             mode='overwrite')
 
 

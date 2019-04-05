@@ -270,10 +270,8 @@ def Linear_reg(dataset_add, feature_colm, label_colm):
 
 
 
-
-
         # json_response = {'run_status': 'success', 'PredictiveResponse': resultdf}
-        return (graph_response, table_response)
+        return (json_response)
     except Exception as e:
         print('exception is =' + str(e))
 

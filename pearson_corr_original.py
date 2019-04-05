@@ -37,6 +37,8 @@ def Correlation(dataset_add, feature_colm, label_colm):
 
     r1p = Correlation.corr(output_corr, "correlation_colm").head()
     print("pearson correlation matrix : \n : " + str(r1p[0]))
+    print("pearson correlation matrix : \n : " + str(r1p[0].toArray()))
+    pearson_matrix = r1p[0].toArray().tolist()
     pearson_value = []
 
     for x in r1p[0].toArray():
@@ -48,7 +50,8 @@ def Correlation(dataset_add, feature_colm, label_colm):
     # r1s = Correlation.corr(output_corr, "correlation_colm", "spearman").head()
     # print(" spearman correlation...: \n" + str(r1s[0]))
 
-    json_response = {'pearson value : ' : pearson_value}
+    json_response = {'pearson_value' : pearson_value,
+                     'matrix': pearson_matrix}
     print(json_response)
 
 

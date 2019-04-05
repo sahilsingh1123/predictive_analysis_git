@@ -16,16 +16,17 @@ from pearson_test_importance import Correlation_test_imp
 spark = SparkSession.builder.appName("predictive analysis").master("local[*]").getOrCreate()
 spark.sparkContext.setLogLevel("ERROR")
 
-
-
-dataset_add = "/home/fidel/mltest/bank.csv"
-features = ['balance', 'day', 'duration', 'campaign','job','y', 'marital', 'education', 'default', 'housing', 'loan', 'contact', 'poutcome']
-# features = ['age', 'balance', 'day', 'duration', 'campaign']
-label = ["age"]
+#
+#
+# dataset_add = "/home/fidel/mltest/bank.csv"
+# features = ['balance', 'day', 'duration', 'campaign','job','y', 'marital', 'education', 'default', 'housing', 'loan', 'contact', 'poutcome']
+# # features = ['age', 'balance', 'day', 'duration', 'campaign']
+# label = ["age"]
 
 def randomClassifier(dataset_add, feature_colm, label_colm):
     try:
-        dataset = spark.read.csv(dataset_add,  header=True, inferSchema=True, sep=";")
+        dataset = spark.read.parquet(dataset_add)
+        # dataset = spark.read.csv(dataset_add, header=True, inferSchema=True)
 
         dataset.show()
 
@@ -60,7 +61,7 @@ def randomClassifier(dataset_add, feature_colm, label_colm):
 
 
 
-        dataset = dataset.withColumnRenamed(label , 'indexed_'+ label)
+        # dataset = dataset.withColumnRenamed(label , 'indexed_'+ label)
 
 
         dataset_pearson = dataset
@@ -126,42 +127,14 @@ def randomClassifier(dataset_add, feature_colm, label_colm):
 
         # preparing the finalized data
 
-        finalized_data = vec_indexed.select('indexed_'+label, 'vec_indexed_features')
+        finalized_data = vec_indexed.select(label, 'vec_indexed_features')
         finalized_data.show()
 
 
 
         # calling pearson test fuction
 
-        response_pearson_test = Correlation_test_imp(dataset=dataset_pearson, features = integer_features, label_col='indexed_'+ label)
-
-        print(response_pearson_test)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+        response_pearson_test = Correlation_test_imp(dataset=dataset_pearson, features = integer_features, label_col= label)
 
 
 
@@ -196,7 +169,7 @@ def randomClassifier(dataset_add, feature_colm, label_colm):
         train_data, test_data = finalized_data.randomSplit([0.75, 0.25], seed=40)
 
 
-        rf=RandomForestRegressor(labelCol='indexed_'+label,featuresCol='vec_indexed_features',numTrees=10)
+        rf=RandomForestRegressor(labelCol=label,featuresCol='vec_indexed_features',numTrees=10)
 
         # Convert indexed labels back to original labels.
 
@@ -210,6 +183,22 @@ def randomClassifier(dataset_add, feature_colm, label_colm):
         # predictions.select("prediction", "label", "features").show(10)
 
         print(model.featureImportances)
+        feature_importance = model.featureImportances.toArray().tolist()
+        print(feature_importance)
+
+
+        features_column_for_user = integer_features + string_features
+
+        feature_imp = { 'feature_importance': feature_importance,"feature_column" : features_column_for_user}
+
+
+        response_dict = {
+            'feature_importance': feature_imp,
+            'pearson_test_data': response_pearson_test
+        }
+
+        return response_dict
+        print(response_dict)
 
 
 
@@ -229,7 +218,7 @@ def randomClassifier(dataset_add, feature_colm, label_colm):
 
     except Exception as e :
         print("exception is  = " + str(e))
-
-if __name__== "__main__":
-    randomClassifier(dataset_add, features, label)
+#
+# if __name__== "__main__":
+#     randomClassifier(dataset_add, features, label)
 
