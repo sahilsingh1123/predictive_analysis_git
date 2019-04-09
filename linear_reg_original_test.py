@@ -227,6 +227,9 @@ def Linear_reg(dataset_add, feature_colm, label_colm):
             residual_vall=prediction_val_pand[label] - prediction_val_pand["prediction"])
 
         prediction_val_pand_residual = prediction_val_pand["residual_vall"]
+
+        prediction_val_pand_label = prediction_val_pand[label]
+
         # print prediction_val_pand_residual
         prediction_val_pand_predict = prediction_val_pand["prediction"]
         # print prediction_val_pand_predict
@@ -445,15 +448,62 @@ def Linear_reg(dataset_add, feature_colm, label_colm):
         sqrt_residual
 
         plt.scatter(sqrt_residual, prediction_val_pand_predict)
+        ####################################################################################3
+        # creating the std residuals
+
+
+        # square root of label
+        sqrt_label=[]
+        for x in prediction_val_pand_label:
+            sqrt_label.append(math.sqrt(abs(x)))
+
+
+        sqrt_label
+        prediction_val_pand_residual
+        std_residual = []
+        for sqr, resid in zip(sqrt_label, prediction_val_pand_residual):
+            std_residual.append(resid / sqr)
+            # print(std_sqrt_residual)
+
+        # creating the std sqr root
+
+        sqrt_std_residuals = []
+        for x in std_residual:
+            # print(math.sqrt(abs(x)))
+            sqrt_std_residuals.append(math.sqrt(abs(x)))
+        print(sqrt_std_residuals)
+
+
+        # print(std_sqrt_residual)
+
+        scale_predict_residual = ''
+        for pre, res in zip(prediction_val_pand_predict, sqrt_std_residuals):
+            scale_predict_residual += str(pre) + 't' + str(res) + 'n'
+        print(scale_predict_residual)
+
+    ##########################################################################
+        # import math
+        # sqrt_stdres = []
+        # for x in std_sqrt_residual:
+        #     sqrt_stdres.append(math.sqrt(x))
+        #
+        # scale_predict_residual = ''
+        # for pre, res in zip(prediction_val_pand_predict, sqrt_stdres):
+        #     scale_predict_residual += str(pre) + 't' + str(res) + 'n'
+        # print(scale_predict_residual)
+
+    ###################################3
+
+
         # plt.show()
 
-        scale_predict_residual=''
-
-        print(len(sqrt_residual))
-        length = len(sqrt_residual)
-
-        for i in range(0, len(sqrt_residual)):
-            scale_predict_residual += str(prediction_val_pand_predict[i]) + '|' + str(sqrt_residual[i]) + '\n'
+        # scale_predict_residual=''
+        #
+        # print(len(sqrt_residual))
+        # length = len(sqrt_residual)
+        #
+        # for i in range(0, len(std_sqrt_residual)):
+        #     scale_predict_residual += str(prediction_val_pand_predict[i]) + '|' + str(std_sqrt_residual[i]) + '\n'
 
         # with open('scale_location_plot.csv', 'w') as s_l:
         #     writer_s_l = csv.writer(s_l)

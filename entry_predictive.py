@@ -32,7 +32,7 @@ import json
 dataset_add = "/home/fidel/mltest/auto-miles-per-gallon.csv"
 feature_colm = ["CYLINDERS", "WEIGHT" , "HORSEPOWER","ACCELERATION", "DISPLACEMENT", "MODELYEAR"]
 label_colm = ["MPG"]
-algorithm = "random_regressor"
+algorithm = "linear_reg"
 
 
 def application(data_add, feat_col, label_col, algo):
