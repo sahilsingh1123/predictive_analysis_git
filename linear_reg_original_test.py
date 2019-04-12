@@ -325,33 +325,33 @@ def Linear_reg(dataset_add, feature_colm, label_colm):
         # print quantile_label
         quantile_prediction = lr_prediction_quantile.approxQuantile("prediction", x, 0.01)
         # print quantile_prediction
-
-        Q_label_pred=''
-        print(len(quantile_label))
-        length = len(quantile_label)
-
-        for i in range(0,len(quantile_label)):
-            Q_label_pred += str(quantile_label[i]) + '|'  +  str(quantile_prediction[i]) + '\n'
+        #
+        # Q_label_pred=''
+        # print(len(quantile_label))
+        # length = len(quantile_label)
+        #
+        # for i in range(0,len(quantile_label)):
+        #     Q_label_pred += str(quantile_label[i]) + '|'  +  str(quantile_prediction[i]) + '\n'
 
 
         # writing it to the hdfs in parquet file
-
-        quantile_label_tospark = spark.createDataFrame(quantile_label, FloatType())
-        quantile_label_tospark = quantile_label_tospark.withColumnRenamed("value", "Q_label")
-
-        quantile_prediction_tospark = spark.createDataFrame(quantile_prediction, FloatType())
-        quantile_prediction_tospark = quantile_prediction_tospark.withColumnRenamed("value", "Q_prediction")
-
-        quant_label = quantile_label_tospark.withColumn('row_index', f.monotonically_increasing_id())
-        quant_predtiction = quantile_prediction_tospark.withColumn('row_index', f.monotonically_increasing_id())
-
-        final_quantile = quant_label.join(quant_predtiction,on=['row_index']).sort('row_index').drop('row_index')
-
-        final_quantile.show()
-
-        final_quantile.write.parquet('hdfs://10.171.0.181:9000/dev/dmxdeepinsight/datasets/Q_Q_PLOT.parquet',mode='overwrite')
-
-
+        #
+        # quantile_label_tospark = spark.createDataFrame(quantile_label, FloatType())
+        # quantile_label_tospark = quantile_label_tospark.withColumnRenamed("value", "Q_label")
+        #
+        # quantile_prediction_tospark = spark.createDataFrame(quantile_prediction, FloatType())
+        # quantile_prediction_tospark = quantile_prediction_tospark.withColumnRenamed("value", "Q_prediction")
+        #
+        # quant_label = quantile_label_tospark.withColumn('row_index', f.monotonically_increasing_id())
+        # quant_predtiction = quantile_prediction_tospark.withColumn('row_index', f.monotonically_increasing_id())
+        #
+        # final_quantile = quant_label.join(quant_predtiction,on=['row_index']).sort('row_index').drop('row_index')
+        #
+        # final_quantile.show()
+        #
+        # final_quantile.write.parquet('hdfs://10.171.0.181:9000/dev/dmxdeepinsight/datasets/Q_Q_PLOT.parquet',mode='overwrite')
+        #
+        #
 
         # print(str(Q_label_pred[i]))
 
@@ -372,32 +372,32 @@ def Linear_reg(dataset_add, feature_colm, label_colm):
 
 
 
+        #
+        #
+        # prediction_val_pand_predict_tospark = spark.createDataFrame(prediction_val_pand_predict, FloatType())
+        # prediction_val_pand_predict_tospark = prediction_val_pand_predict_tospark.withColumnRenamed("value", "prediction")
+        #
+        # prediction_val_pand_residual_tospark = spark.createDataFrame(prediction_val_pand_residual, FloatType())
+        # prediction_val_pand_residual_tospark = prediction_val_pand_residual_tospark.withColumnRenamed("value", "residual")
+        #
+        # pred_spark = prediction_val_pand_predict_tospark.withColumn('row_index', f.monotonically_increasing_id())
+        # res_spark = prediction_val_pand_residual_tospark.withColumn('row_index', f.monotonically_increasing_id())
+        #
+        # final_res_fitted = pred_spark.join(res_spark, on=['row_index'])\
+        #     .sort('row_index').drop('row_index')
+        #
+        # final_res_fitted.show()
+        #
+        # final_res_fitted.write.parquet('hdfs://10.171.0.181:9000/dev/dmxdeepinsight/datasets/RESIDUAL_FITTED_PLOT.parquet',
+        #                              mode='overwrite')
+        #
 
 
-        prediction_val_pand_predict_tospark = spark.createDataFrame(prediction_val_pand_predict, FloatType())
-        prediction_val_pand_predict_tospark = prediction_val_pand_predict_tospark.withColumnRenamed("value", "prediction")
-
-        prediction_val_pand_residual_tospark = spark.createDataFrame(prediction_val_pand_residual, FloatType())
-        prediction_val_pand_residual_tospark = prediction_val_pand_residual_tospark.withColumnRenamed("value", "residual")
-
-        pred_spark = prediction_val_pand_predict_tospark.withColumn('row_index', f.monotonically_increasing_id())
-        res_spark = prediction_val_pand_residual_tospark.withColumn('row_index', f.monotonically_increasing_id())
-
-        final_res_fitted = pred_spark.join(res_spark, on=['row_index'])\
-            .sort('row_index').drop('row_index')
-
-        final_res_fitted.show()
-
-        final_res_fitted.write.parquet('hdfs://10.171.0.181:9000/dev/dmxdeepinsight/datasets/RESIDUAL_FITTED_PLOT.parquet',
-                                     mode='overwrite')
-
-
-
-        plt.scatter(prediction_val_pand_predict, prediction_val_pand_residual)
-        plt.axhline(y=0.0, color="red")
-        plt.xlabel("prediction")
-        plt.ylabel("residual")
-        plt.title("residual vs fitted ")
+        # plt.scatter(prediction_val_pand_predict, prediction_val_pand_residual)
+        # plt.axhline(y=0.0, color="red")
+        # plt.xlabel("prediction")
+        # plt.ylabel("residual")
+        # plt.title("residual vs fitted ")
         # plt.show()
 
         # creating the csv file and writitng into it
@@ -447,8 +447,88 @@ def Linear_reg(dataset_add, feature_colm, label_colm):
 
         sqrt_residual
 
-        plt.scatter(sqrt_residual, prediction_val_pand_predict)
+        # plt.scatter(sqrt_residual, prediction_val_pand_predict)
         ####################################################################################3
+
+        # calculating std deviation
+        import statistics
+
+        print(statistics.stdev(prediction_val_pand_residual))
+        stdev_pred = statistics.stdev(prediction_val_pand_residual)
+        # mean = statistics.mean(prediction_val_pand_residual)
+
+        # calcuate stnd residuals
+        std_res = []
+        for x in prediction_val_pand_residual:
+            std_res.append(x / stdev_pred)
+        print(std_res)
+
+        # calculating the square root of std_res
+        import math
+        sqr_std_res = []
+        for x in std_res:
+            sqr_std_res.append(math.sqrt(abs(x)))
+        print(sqr_std_res)
+        #######################################################################################3
+        # QUANTILE
+
+        ## sort the list
+        sorted_std_res = sorted(std_res)
+        print(sorted_std_res)
+        #
+        mean = statistics.mean(sorted_std_res)
+        stdev = statistics.stdev(sorted_std_res)
+        print(mean)
+        quantile = []
+        n = len(sorted_std_res)
+        print(n)
+        for x in range(0,n):
+            quantile.append((x - 0.5) / (n))
+
+        print(quantile)
+        #
+        # z_score theoritical
+        from scipy.stats import norm
+
+        z_theory = []
+        for x in quantile:
+            z_theory.append((norm.ppf(abs(x))))
+        print(z_theory)
+        # z score for real val
+        z_pract = []
+        for x in sorted_std_res:
+            z_pract.append((x - mean) / stdev)
+
+        #
+
+        y = 0.1
+        x = []
+
+        for i in range(0, 90):
+            x.append(y)
+            y = round(y + 0.01, 2)
+
+        quantile_std_res = spark.createDataFrame(std_res, FloatType())
+        quantile_std_res.show()
+        quantile_std_res_t = quantile_std_res.approxQuantile('value', x, 0.01)
+        print(quantile_std_res_t)
+        print(x)
+
+
+
+        Q_label_pred=''
+        print(len(quantile_label))
+        length = len(quantile_label)
+        for quant,val in zip(z_theory,z_pract):
+            Q_label_pred += str(val) + 't' + str(quant) + 'n'
+
+
+        plt.scatter(z_theory,z_pract)
+        plt.savefig('q_q')
+
+        ####################################################
+
+
         # creating the std residuals
 
 
@@ -512,26 +592,26 @@ def Linear_reg(dataset_add, feature_colm, label_colm):
 
         # writing to the parquet
 
-        prediction_val_pand_predict_tospark = spark.createDataFrame(prediction_val_pand_predict, FloatType())
-        prediction_val_pand_predict_tospark = prediction_val_pand_predict_tospark.withColumnRenamed("value",
-                                                                                                    "prediction")
-
-        sqrt_residual_tospark= spark.createDataFrame(sqrt_residual, FloatType())
-        sqrt_residual_tospark = sqrt_residual_tospark.withColumnRenamed("value",
-                                                                                                      "sqrt_residual")
-
-        pred_spark = prediction_val_pand_predict_tospark.withColumn('row_index', f.monotonically_increasing_id())
-        res_spark = sqrt_residual_tospark.withColumn('row_index', f.monotonically_increasing_id())
-
-        final_scale_fitted = pred_spark.join(res_spark,on=['row_index']) \
-            .sort('row_index').drop('row_index')
-
-        final_scale_fitted.show()
-
-        final_scale_fitted.write.parquet(
-            'hdfs://10.171.0.181:9000/dev/dmxdeepinsight/datasets/SCALE_LOCATION_PLOT.parquet',
-            mode='overwrite')
-
+        # prediction_val_pand_predict_tospark = spark.createDataFrame(prediction_val_pand_predict, FloatType())
+        # prediction_val_pand_predict_tospark = prediction_val_pand_predict_tospark.withColumnRenamed("value",
+        #                                                                                             "prediction")
+        #
+        # sqrt_residual_tospark= spark.createDataFrame(sqrt_residual, FloatType())
+        # sqrt_residual_tospark = sqrt_residual_tospark.withColumnRenamed("value",
+        #                                                                                               "sqrt_residual")
+        #
+        # pred_spark = prediction_val_pand_predict_tospark.withColumn('row_index', f.monotonically_increasing_id())
+        # res_spark = sqrt_residual_tospark.withColumn('row_index', f.monotonically_increasing_id())
+        #
+        # final_scale_fitted = pred_spark.join(res_spark,on=['row_index']) \
+        #     .sort('row_index').drop('row_index')
+        #
+        # final_scale_fitted.show()
+        #
+        # final_scale_fitted.write.parquet(
+        #     'hdfs://10.171.0.181:9000/dev/dmxdeepinsight/datasets/SCALE_LOCATION_PLOT.parquet',
+        #     mode='overwrite')
+        #
 
 
 

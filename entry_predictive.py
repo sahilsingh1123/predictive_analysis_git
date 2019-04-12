@@ -21,7 +21,7 @@ import json
 
 #
 # feature_colm = ['balance', 'day', 'duration', 'campaign','job','y', 'marital', 'education', 'default', 'housing', 'loan', 'contact', 'poutcome']
-# label_colm = ["age"]
+# label_colm = ["age"]0
 # algorithm = "random_regressor"
 # dataset_add = "/home/fidel/mltest/bank.csv"
 #

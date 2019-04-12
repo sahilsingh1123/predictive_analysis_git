@@ -1,7 +1,12 @@
+from scipy.stats import norm
+import statistics
 from pyspark.sql import SparkSession
 from pyspark.ml.feature import VectorAssembler
 from pyspark.ml.regression import LinearRegression
 from pyspark.sql.functions import col
+from pyspark.sql.types import *
+import math
+
 import csv
 # from itertools import izip
 # from more_itertools import unzip
@@ -149,7 +154,6 @@ def Linear_reg(dataset_add, feature_colm, label_colm):
         # DATA VISUALIZATION PART
 
         # finding the quantile in the dataset(Q_Q plot)
-        import matplotlib.pyplot as plt
 
         y = 0.1
         x = []
@@ -224,7 +228,6 @@ def Linear_reg(dataset_add, feature_colm, label_colm):
         prediction_val_pand_residual
         prediction_val_pand_predict
         prediction_val_pand_residual_abs = prediction_val_pand_residual.abs()
-        import math
         sqrt_residual = []
         for x in prediction_val_pand_residual_abs:
             sqrt_residual.append(math.sqrt(x))
@@ -232,35 +235,132 @@ def Linear_reg(dataset_add, feature_colm, label_colm):
 
         sqrt_residual
 
-        # square root of label
-        sqrt_label = []
-        for x in prediction_val_pand_label:
-            sqrt_label.append(math.sqrt(abs(x)))
 
-        sqrt_label
-        prediction_val_pand_residual
-        std_residual = []
-        for sqr, resid in zip(sqrt_label, prediction_val_pand_residual):
-            std_residual.append(resid / sqr)
-            # print(std_sqrt_residual)
+        ########################################
 
-        # creating the std sqr root
+        # calculating std deviation
 
-        sqrt_std_residuals = []
-        for x in std_residual:
-            # print(math.sqrt(abs(x)))
-            sqrt_std_residuals.append(math.sqrt(abs(x)))
-        print(sqrt_std_residuals)
+        print(statistics.stdev(prediction_val_pand_residual))
+        stdev_ = statistics.stdev(prediction_val_pand_residual)
+
+        # calcuate stnd residuals
+        std_res = []
+        for x in prediction_val_pand_residual:
+            std_res.append(x / stdev_)
+        print(std_res)
+
+        # calculating the square root of std_res
+
+        sqr_std_res = []
+        for x in std_res:
+            sqr_std_res.append(math.sqrt(abs(x)))
+        print(sqr_std_res)
+
+        #######################################
+
+        #
+        # # square root of label
+        # sqrt_label = []
+        # for x in prediction_val_pand_label:
+        #     sqrt_label.append(math.sqrt(abs(x)))
+        #
+        # sqrt_label
+        # prediction_val_pand_residual
+        # std_residual = []
+        # for sqr, resid in zip(sqrt_label, prediction_val_pand_residual):
+        #     std_residual.append(resid / sqr)
+        #     # print(std_sqrt_residual)
+        #
+        # # creating the std sqr root
+        #
+        # sqrt_std_residuals = []
+        # for x in std_residual:
+        #     # print(math.sqrt(abs(x)))
+        #     sqrt_std_residuals.append(math.sqrt(abs(x)))
+        # print(sqrt_std_residuals)
+        #
+        #
+        #
+        # t_sqrt_std_residuals = []
+        # for x in sqrt_std_residuals:
+        #     # print(math.sqrt(abs(x)))
+        #     t_sqrt_std_residuals.append(math.sqrt(abs(x)))
+        # # print(sqrt_std_residuals)
+        #
 
         # print(std_sqrt_residual)
 
         scale_predict_residual = ''
-        for pre, res in zip(prediction_val_pand_predict, sqrt_std_residuals):
+        for pre, res in zip(prediction_val_pand_predict, sqr_std_res):
             scale_predict_residual += str(pre) + 't' + str(res) + 'n'
         print(scale_predict_residual)
 
+        #######################################################################################3
+        # QUANTILE
 
-##########################################################################################
+        y = 0.1
+        x = []
+
+        for i in range(0, 90):
+            x.append(y)
+            y = round(y + 0.01, 2)
+
+        quantile_std_res = spark.createDataFrame(std_res, FloatType())
+        quantile_std_res.show()
+        quantile_std_res_t = quantile_std_res.approxQuantile('value', x, 0.01)
+        print(quantile_std_res_t)
+        print(x)
+
+
+        # calculating the z_score
+
+
+        ## sort the list
+        sorted_std_res = sorted(std_res)
+
+        mean = statistics.mean(sorted_std_res)
+        stdev = statistics.stdev(sorted_std_res)
+        # print(mean)
+        quantile = []
+        n = len(std_res)
+        print(n)
+        for x in range(0,n):
+            quantile.append((x-0.5) / (n))
+
+        print(quantile)
+
+        # z_score theoratical
+        z_theory = []
+        for x in quantile:
+            z_theory.append(norm.ppf(abs(x)))
+
+        # z score for real val
+        z_pract = []
+        for x in sorted_std_res:
+            z_pract.append((x-mean)/stdev)
+
+
+
+        Q_label_pred = ''
+        # print(len(quantile_label))
+        # length = len(quantile_label)
+
+        # z=[-2.0,-1.5,-1.0,-0.5,0, 0.5,1.0,1.5,2.0,2.5]
+
+        for quant,val in zip(z_theory,z_pract):
+            Q_label_pred += str(quant) + 't' + str(val) + 'n'
+
+
+        # plt.scatter(z_pract,z_theory)
+        # plt.savefig()
+
+        #
+        # plt.scatter(z_theory,z_pract)
+        # plt.show()
+
+        ####################################################
+
+        ##########################################################################################
         # # plt.scatter(sqrt_residual, prediction_val_pand_predict)
         # # plt.show()
         #
