@@ -1,16 +1,16 @@
-from scipy.stats import norm
+import math
 import statistics
-from pyspark.sql import SparkSession
+
+import pyspark.sql.functions as f
 from pyspark.ml.feature import VectorAssembler
 from pyspark.ml.regression import LinearRegression
-from pyspark.sql.functions import col
+from pyspark.sql import SparkSession
 from pyspark.sql.types import *
-import math
+from relationship import Relationship
+from scipy.stats import norm
 
-import csv
 # from itertools import izip
 # from more_itertools import unzip
-import json
 
 spark = SparkSession.builder.appName("predictive_Analysis").master("local[*]").getOrCreate()
 spark.sparkContext.setLogLevel("ERROR")
@@ -22,7 +22,7 @@ spark.sparkContext.setLogLevel("ERROR")
 # label_colm = "MPG"
 #
 
-def Linear_reg(dataset_add, feature_colm, label_colm):
+def Linear_reg(dataset_add, feature_colm, label_colm,relation_list, relation):
     try:
         dataset = spark.read.parquet(dataset_add)
         dataset.show()
@@ -32,6 +32,20 @@ def Linear_reg(dataset_add, feature_colm, label_colm):
             label = y
 
         print(label)
+
+        # relationship
+
+        if relation=='linear_reg':
+            print('linear relationship')
+        if relation=='no':
+            dataset = Relationship(dataset, relation_list)
+
+        dataset.show()
+
+
+
+
+
 
         # renaming the colm
         # print (label)
@@ -128,6 +142,51 @@ def Linear_reg(dataset_add, feature_colm, label_colm):
         T_values = str(training_summary.tValues)
         print(" p values :\n" + str(training_summary.pValues))
         P_values = str(training_summary.pValues)
+        #######################################################################################################
+        # residual  vs predicted value
+
+        prediction_data = regressor.summary.predictions
+        prediction_data.show()
+        prediction_data.select(['prediction']).show()
+        predicted = prediction_data.select(['prediction'])
+        regressor.summary.residuals.show()
+        residuals = regressor.summary.residuals
+        pred_d = predicted.withColumn('row_index', f.monotonically_increasing_id())
+        res_d = residuals.withColumn('row_index', f.monotonically_increasing_id())
+
+        pred_residuals = pred_d.join(res_d, on=['row_index']).sort('row_index').drop('row_index')
+        pred_residuals.show()
+
+        pred_residuals.write.parquet('hdfs://10.171.0.181:9000/dev/dmxdeepinsight/datasets/residual_fitted_plot.parquet',
+                                     mode='overwrite')
+
+        # scale location plot
+
+
+
+
+
+
+
+        ############################################################################################################
+
+        ####################################################################################
+        # appending predicted value to the dataset
+        target = dataset.select(label)
+        pred = prediction_data.select(['prediction'])
+        pred_d = pred.withColumn('row_index', f.monotonically_increasing_id())
+        target_d = target.withColumn('row_index', f.monotonically_increasing_id())
+
+        pred_target = pred_d.join(target_d, on=['row_index']).drop('row_index')
+        pred_target.show()
+
+        dataset.show()
+
+        pred_target_data_update = dataset.join(pred_target, on=[label])
+
+        pred_target_data_update.show(100)
+
+        ##########################################################################################
 
         # creating the dictionary for storing the result
 

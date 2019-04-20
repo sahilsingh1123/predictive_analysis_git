@@ -1,9 +1,8 @@
 import linear_reg_original_test
-import pearson_corr_original
-import chi_sqr_original
 import random_forest_classifier_test
 import random_forest_regression_test
-import json
+
+import lasso_regression_test
 
 # if __name__== "__main__":
 
@@ -32,7 +31,9 @@ import json
 dataset_add = "/home/fidel/mltest/auto-miles-per-gallon.csv"
 feature_colm = ["CYLINDERS", "WEIGHT" , "HORSEPOWER","ACCELERATION", "DISPLACEMENT", "MODELYEAR"]
 label_colm = ["MPG"]
-algorithm = "linear_reg"
+relation_list = {}
+relation = 'linear_reg'
+algorithm = "lasso_reg"
 
 
 def application(data_add, feat_col, label_col, algo):
@@ -48,6 +49,8 @@ def application(data_add, feat_col, label_col, algo):
         response_data = random_forest_classifier_test.randomClassifier(dataset_add=data_add, feature_colm=feat_col, label_colm=label_col)
     elif algo == 'random_regressor':
         response_data = random_forest_regression_test.randomClassifier(dataset_add=data_add, feature_colm=feat_col, label_colm=label_col)
+    elif algo == 'lasso_reg':
+        response_data = lasso_regression_test.Lasso_reg(dataset_add= data_add, feature_colm=feat_col, label_colm= label_col, relation_list=relation_list,relation=relation)
 
 
     else:

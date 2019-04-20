@@ -1,13 +1,14 @@
-from flask import Flask
-from flask import jsonify
-from flask import Response
-from flask import request
 import json
+
+import chi_sqr_original
 import linear_reg_original
 import pearson_corr_original
-import chi_sqr_original
 import random_forest_classifier_test
 import random_forest_regression_test
+from flask import Flask
+from flask import Response
+from flask import jsonify
+from flask import request
 
 app = Flask(__name__)
 
@@ -32,12 +33,16 @@ def root():
     print("label colm ", label_colm_req)
     algo_name = requestData.get("algorithm_name")
     print ("algo name ", algo_name)
+    relation_list = requestData.get("relationship_list")
+    print(relation_list)
+    relation = requestData.get("relationship")
+    print(relation)
 
     responseData = ''
 
     try:
         if algo_name == "linear_reg":
-            responseData = linear_reg_original.Linear_reg(dataset_add=fileLocation, feature_colm=feature_colm_req, label_colm=label_colm_req)
+            responseData = linear_reg_original.Linear_reg(dataset_add=fileLocation, feature_colm=feature_colm_req, label_colm=label_colm_req, relation_list= relation_list, relation=relation)
         elif algo_name == 'pearson_test':
             responseData = pearson_corr_original.Correlation(dataset_add=fileLocation, feature_colm=feature_colm_req,label_colm=label_colm_req)
         elif algo_name == 'chi_square_test':

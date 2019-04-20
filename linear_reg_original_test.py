@@ -1,14 +1,14 @@
-from relationship import Relationship
-from pyspark.sql import SparkSession
+import csv
+
+import pyspark.sql.functions as f
 from pyspark.ml.feature import VectorAssembler
 from pyspark.ml.regression import LinearRegression
-from pyspark.sql.functions import col
+from pyspark.sql import SparkSession
 from pyspark.sql.types import *
-import pyspark.sql.functions as f
-import csv
+from relationship import Relationship
+
 # from itertools import izip
 # from more_itertools import unzip
-import json
 
 spark = SparkSession.builder.appName("predictive_Analysis").master("local[*]").getOrCreate()
 spark.sparkContext.setLogLevel("ERROR")
@@ -284,9 +284,69 @@ def Linear_reg(dataset_add, feature_colm, label_colm):
         print(" p values :\n" + str(training_summary.pValues))
         P_values = str(training_summary.pValues)
 
+        #######################################################################################################
+        # residual  vs predicted value
+
+        prediction_data = regressor.summary.predictions
+        prediction_data.show()
+        prediction_data.select(['prediction']).show()
+        predicted = prediction_data.select(['prediction'])
+        regressor.summary.residuals.show()
+        residuals = regressor.summary.residuals
+        pred_d = predicted.withColumn('row_index', f.monotonically_increasing_id())
+        res_d = residuals.withColumn('row_index', f.monotonically_increasing_id())
+
+        pred_residuals = pred_d.join(res_d, on=['row_index']).sort('row_index').drop('row_index')
+        pred_residuals.show()
+
+        pred_residuals.write.parquet('hdfs://10.171.0.181:9000/dev/dmxdeepinsight/datasets/Q_Q_PLOT.parquet',
+                                     mode='overwrite')
 
 
 
+        ####################################################################################
+        # appending predicted value to the dataset
+        target = dataset.select(label)
+        pred = prediction_data.select(['prediction'])
+        pred_d = pred.withColumn('row_index', f.monotonically_increasing_id())
+        target_d = target.withColumn('row_index', f.monotonically_increasing_id())
+
+        pred_target = pred_d.join(target_d, on=['row_index']).drop('row_index')
+        pred_target.show()
+
+        dataset.show()
+
+        pred_target_data_update = dataset.join(pred_target, on=[label])
+
+        pred_target_data_update.show(100)
+
+
+        ##########################################################################################
+
+        # scale location plot
+
+        # for scale location plot
+        # from pyspark.sql.functions import udf
+        #
+        # def std_res(x):
+        #     res_list = []
+        #     res_list.append(x)
+        #
+        # std_residuals = udf(lambda y: std_res(y), FloatType())
+        #
+        # residuals_std = residuals.withColumn('residuals', std_residuals(col('residuals').cast(FloatType())))
+        #
+        # import statistics
+        # import numpy as np
+        # residuals_panda = residuals.toPandas()
+        # # residuals_panda.residuals = range(residuals_panda.shape[1])
+        # residuals_panda = residuals_panda.values
+        # print(residuals_panda)
+        # stdev_training = statistics.stdev(residuals_panda)
+        # print(stdev_training)
+
+
+        ############################################################################################################
 
         # creating the dictionary for storing the result
 
