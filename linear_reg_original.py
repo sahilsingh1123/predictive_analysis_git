@@ -6,8 +6,9 @@ from pyspark.ml.feature import VectorAssembler
 from pyspark.ml.regression import LinearRegression
 from pyspark.sql import SparkSession
 from pyspark.sql.types import *
-from relationship import Relationship
 from scipy.stats import norm
+
+from PredictionAlgorithms.relationship import Relationship
 
 # from itertools import izip
 # from more_itertools import unzip
@@ -35,9 +36,9 @@ def Linear_reg(dataset_add, feature_colm, label_colm,relation_list, relation):
 
         # relationship
 
-        if relation=='linear_reg':
+        if relation=='linear':
             print('linear relationship')
-        if relation=='no':
+        if relation=='non_linear':
             dataset = Relationship(dataset, relation_list)
 
         dataset.show()

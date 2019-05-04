@@ -1,8 +1,9 @@
-import linear_reg_original_test
-import random_forest_classifier_test
-import random_forest_regression_test
+from PredictionAlgorithms import linear_reg_original_test
+from PredictionAlgorithms import random_forest_classifier_test
+from PredictionAlgorithms import random_forest_regression_test
 
-from PredictionAlgorithms import lasso_regression_test
+from PredictionAlgorithms.lasso_regression_test import Lasso_reg
+from PredictionAlgorithms.ridge_regression_test import Ridge_reg
 
 # if __name__== "__main__":
 
@@ -26,15 +27,16 @@ from PredictionAlgorithms import lasso_regression_test
 #
 
 # large dataset
-dataset_add= '/home/fidel/mltest/BI.csv'
-feature_colm=['Sub Total', 'Tax Amount', 'Freight']
-label_colm=['Profit']
+dataset_add= '/home/fidel/mltest/auto-miles-per-gallon.csv'
+feature_colm= ["CYLINDERS", "WEIGHT" , "HORSEPOWER","ACCELERATION", "DISPLACEMENT", "MODELYEAR"]
+label_colm=["MPG"]
 relation_list={}
 relation= 'linear_reg'
-algorithm='lasso_reg'
+algorithm='ridge_reg'
+# xt=[0.5]
 
 
-
+#
 # dataset_add = "/home/fidel/mltest/auto-miles-per-gallon.csv"
 # feature_colm = ["CYLINDERS", "WEIGHT" , "HORSEPOWER","ACCELERATION", "DISPLACEMENT", "MODELYEAR"]
 # label_colm = ["MPG"]
@@ -57,7 +59,9 @@ def application(data_add, feat_col, label_col, algo):
     elif algo == 'random_regressor':
         response_data = random_forest_regression_test.randomClassifier(dataset_add=data_add, feature_colm=feat_col, label_colm=label_col)
     elif algo == 'lasso_reg':
-        response_data = lasso_regression_test.Lasso_reg(dataset_add= data_add, feature_colm=feat_col, label_colm= label_col, relation_list=relation_list, relation=relation)
+        response_data = Lasso_reg(xt=[0.5]).lasso(dataset_add= data_add, feature_colm=feat_col, label_colm= label_col, relation_list=relation_list, relation=relation)
+    elif algo == 'ridge_reg':
+        response_data = Ridge_reg().ridge(dataset_add= data_add, feature_colm=feat_col, label_colm= label_col, relation_list=relation_list, relation=relation)
 
 
     else:

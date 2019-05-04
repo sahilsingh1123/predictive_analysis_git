@@ -1,14 +1,19 @@
 import json
 
-import chi_sqr_original
-import linear_reg_original
-import pearson_corr_original
-import random_forest_classifier_test
-import random_forest_regression_test
 from flask import Flask
 from flask import Response
 from flask import jsonify
 from flask import request
+
+from PredictionAlgorithms import chi_sqr_original
+from PredictionAlgorithms import linear_reg_original
+from PredictionAlgorithms import pearson_corr_original
+from PredictionAlgorithms import random_forest_classifier_test
+from PredictionAlgorithms import random_forest_regression_test
+# from PredictionAlgorithms.lasso_regression_test import Lasso_reg
+from PredictionAlgorithms.Lasso_regression import Lasso_reg
+# from PredictionAlgorithms.ridge_regression_test import Ridge_reg
+from PredictionAlgorithms.Ridge_regression import Ridge_reg
 
 app = Flask(__name__)
 
@@ -53,6 +58,12 @@ def root():
         elif algo_name == 'random_regressor':
             responseData = random_forest_regression_test.randomClassifier(dataset_add=fileLocation, feature_colm=feature_colm_req,
                                                                            label_colm=label_colm_req)
+        elif algo_name == 'lasso_reg':
+            responseData = Lasso_reg(xt=[0.5]).lasso(dataset_add=fileLocation, feature_colm=feature_colm_req, label_colm=label_colm_req,
+                                                      relation_list=relation_list, relation=relation)
+        elif algo_name == 'ridge_reg':
+            responseData = Ridge_reg().ridge(dataset_add=fileLocation, feature_colm=feature_colm_req, label_colm=label_colm_req,
+                                              relation_list=relation_list, relation=relation)
 
     except Exception as e:
         print ('exception is = ' + str(e))
