@@ -1,10 +1,8 @@
 import math
-from pyspark.sql.functions import udf
+
 from pyspark.sql.functions import col
-import numpy as np
+from pyspark.sql.functions import udf
 from pyspark.sql.types import *
-
-
 
 
 def Relationship(dataset, dictionary_list):
@@ -22,22 +20,45 @@ def Relationship(dataset, dictionary_list):
 
 
         def log_list(x):
-            return math.log(x)
+            try:
+                return math.log(x, 10)
+            except Exception as e:
+                print('(log error)number should not be less than or equal to zero: ' + str(e))
+                pass
+            # finally:
+            #     print('pass')
+            #     pass
+
 
         def exponent_list(x):
-            return math.exp(x)
+            try:
+                return math.exp(x)
+            except Exception as e:
+                print('(exception error)number should not be large enough to get it infinity: ' + str(e))
 
         def square_list(x):
-            return x ** 2
+            try:
+                return x ** 2
+            except Exception as e:
+                print('(square error)number should not be negative: ' + str(e))
 
         def cubic_list(x):
-            return x ** 3
+            try:
+                return x ** 3
+            except Exception as e:
+                print('(cubic error)number should not be negative: ' + str(e))
 
         def quadritic_list(x):
-            return x ** 4
+            try:
+                return x ** 4
+            except Exception as e:
+                print('(quadratic error )number should not be negative: ' + str(e))
 
         def sqrt_list(x):
-            return math.sqrt(x)
+            try:
+                return math.sqrt(x)
+            except Exception as e:
+                print('(sqare root error) number should not be negative: ' + str(e))
 
         square_list_udf = udf(lambda y: square_list(y), FloatType())
         log_list_udf = udf(lambda y: log_list(y), FloatType())
@@ -65,52 +86,52 @@ def Relationship(dataset, dictionary_list):
 
         for key, value in dictionary_list.items():
             if key == 'square_list':
-                if len(value)==0:
+                if len(value) == 0:
                     print('length is null')
                 else:
                     for colm in value:
-                    # Relationship_val.strip("'")
-                    # square_list_udf = udf(lambda y: square_list(y), FloatType())
+                        # Relationship_val.strip("'")
+                        # square_list_udf = udf(lambda y: square_list(y), FloatType())
                         dataset = dataset.withColumn(colm, square_list_udf(col(colm).cast(FloatType())))
             if key == 'log_list':
-                if len(value)==0:
+                if len(value) == 0:
                     print('length is null')
                 else:
                     for colm in value:
-                    # Relationship_val.strip("'")
-                    # square_list_udf = udf(lambda y: square_list(y), FloatType())
+                        # Relationship_val.strip("'")
+                        # square_list_udf = udf(lambda y: square_list(y), FloatType())
                         dataset = dataset.withColumn(colm, log_list_udf(col(colm).cast(FloatType())))
             if key == 'exponent_list':
-                if len(value)==0:
+                if len(value) == 0:
                     print('length is null')
                 else:
                     for colm in value:
-                    # Relationship_val.strip("'")
-                    # square_list_udf = udf(lambda y: square_list(y), FloatType())
+                        # Relationship_val.strip("'")
+                        # square_list_udf = udf(lambda y: square_list(y), FloatType())
                         dataset = dataset.withColumn(colm, exponent_list_udf(col(colm).cast(FloatType())))
             if key == 'cubic_list':
-                if len(value)==0:
+                if len(value) == 0:
                     print('length is null')
                 else:
                     for colm in value:
-                    # Relationship_val.strip("'")
-                    # square_list_udf = udf(lambda y: square_list(y), FloatType())
+                        # Relationship_val.strip("'")
+                        # square_list_udf = udf(lambda y: square_list(y), FloatType())
                         dataset = dataset.withColumn(colm, cubic_list_udf(col(colm).cast(FloatType())))
             if key == 'quadratic_list':
-                if len(value)==0:
+                if len(value) == 0:
                     print('length is null')
                 else:
                     for colm in value:
-                    # Relationship_val.strip("'")
-                    # square_list_udf = udf(lambda y: square_list(y), FloatType())
+                        # Relationship_val.strip("'")
+                        # square_list_udf = udf(lambda y: square_list(y), FloatType())
                         dataset = dataset.withColumn(colm, quadratic_list_udf(col(colm).cast(FloatType())))
             if key == 'sqrt_list':
-                if len(value)==0:
+                if len(value) == 0:
                     print('length is null')
                 else:
                     for colm in value:
-                    # Relationship_val.strip("'")
-                    # square_list_udf = udf(lambda y: square_list(y), FloaType())
+                        # Relationship_val.strip("'")
+                        # square_list_udf = udf(lambda y: square_list(y), FloaType())
                         dataset = dataset.withColumn(colm, sqrt_list_udf(col(colm).cast(FloatType())))
             else:
                 print('not found')

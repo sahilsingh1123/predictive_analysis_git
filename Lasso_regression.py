@@ -5,7 +5,7 @@ from pyspark.ml.feature import VectorAssembler
 from pyspark.ml.regression import LinearRegression
 from pyspark.sql import SparkSession
 from pyspark.sql.types import *
-from relationship import Relationship
+from PredictionAlgorithms.relationship import Relationship
 
 spark = SparkSession.builder.appName("predictive_Analysis").master("local[*]").getOrCreate()
 spark.sparkContext.setLogLevel("ERROR")

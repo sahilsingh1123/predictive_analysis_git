@@ -39,7 +39,7 @@ class Ridge_reg():
         # print(data_add)
 
         try:
-            dataset = spark.read.parquet(dataset_add)
+            dataset = spark.read.csv(dataset_add,header=True, inferSchema=True)
             dataset.show()
             # data = spark.read.csv('/home/fidel/mltest/BI.csv', header=True, inferSchema=True)
             # data.show()

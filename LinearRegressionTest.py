@@ -8,38 +8,33 @@ from pyspark.sql.types import *
 
 from PredictionAlgorithms.relationship import Relationship
 
-# from pyspark.sql.functions import max as _max
-# from pyspark.sql.functions import abs
-
-#
-# os.environ['PYSPARK_SUBMIT_ARGS'] = '--jars /home/fidel/software/spark-2.4.0-bin-hadoop2.7/jars/xgboost4j-spark-0.72.jar,/home/fidel/software/spark-2.4.0-bin-hadoop2.7/jars/xgboost4j-0.72.jar pyspark-shell'
-#
-
+# from itertools import izip
+# from more_itertools import unzip
 
 spark = SparkSession.builder.appName("predictive_Analysis").master("local[*]").getOrCreate()
-# spark.sparkContext.addPyFile('/home/fidel/Downloads/sparkxgb.zip')
 spark.sparkContext.setLogLevel("ERROR")
 
 
-# spark.sparkContext.addPyFile('/home/fidel/Downloads/xgboost4j-0.72.jar')
-# spark.sparkContext.addPyFile('/home/fidel/Downloads/xgboost4j-spark-0.72.jar')
+#
+# dataset_add = "/home/fidel/mltest/auto-miles-per-gallon.csv"
+# feature_colm = ["CYLINDERS", "WEIGHT", "ACCELERATION", "DISPLACEMENT", "MODELYEAR"]
+# label_colm = "MPG"
+#
+class LinearRegressionModel():
+    def __init__(self, trainDataRatio=0.80):
+        self.trainDataRatio = trainDataRatio
 
 
-class Ridge_reg():
-    def __init__(self, xt=[0.0, 0.01, 0.05, 0.1, 0.5, 1.0, 0.005, 0.8, 0.3]):
-        self.xt = xt
-
-    def ridge(self, dataset_add, feature_colm, label_colm, relation_list, relation):
-
-        Rsqr_list = []
-        Rsqr_regPara = {}
-        print(self.xt)
-        # print(data_add)
-
+    def linearReg(self, dataset_add, feature_colm, label_colm, relation_list, relation):
         try:
-            dataset = spark.read.parquet(dataset_add)
+            dataset = spark.read.csv(dataset_add, header=True, inferSchema=True)
             dataset.show()
-
+            
+            # renaming the colm
+            # print(label_colm)
+            # dataset.withColumnRenamed(label_colm, "label")
+            # print(label_colm)
+            # dataset.show()
 
             label = ''
             for y in label_colm:
@@ -47,12 +42,16 @@ class Ridge_reg():
 
             print(label)
 
-            # relationship
+            dictionary_list = {'log_list': ["CYLINDERS"],
+                               'sqrt_list': ["WEIGHT"],
+                               'cubic_list': ["ACCELERATION"]}
 
-            if relation == 'linear':
+            relationship_val = 'linear_reg'
+
+            if relationship_val == 'linear_reg':
                 print('linear relationship')
-            if relation == 'non_linear':
-                dataset = Relationship(dataset, relation_list)
+            else:
+                dataset = Relationship(dataset, dictionary_list)
 
             dataset.show()
 
@@ -70,42 +69,27 @@ class Ridge_reg():
 
             finalized_data.show()
 
+            for x in self.trainDataRatio:
+                trainDataRatioTransformed = x
+            testDataRatio = 1 - trainDataRatioTransformed
+
             # splitting the dataset into taining and testing
+            # testDataRatio = 1-self.trainDataRatio
 
-            train_data, test_data = finalized_data.randomSplit([0.75, 0.25], seed=40)
+            train_data, test_data = finalized_data.randomSplit([trainDataRatioTransformed, testDataRatio], seed=40)
 
-            ######################################################################33
-            # lasso final
-            for t in self.xt:
-                lr1 = LinearRegression(featuresCol="Independent_features", labelCol=label, elasticNetParam=0,
-                                       regParam=t)
-                regressor1 = lr1.fit(train_data)
-                print(t)
-                print("coefficient : " + str(regressor1.coefficients))
-                reg_sum = regressor1.summary
-                r2 = reg_sum.r2
-                Rsqr_list.append(r2)
-                Rsqr_regPara[r2] = t
-                print(r2)
+            # applying the model
 
-            print(Rsqr_list)
-            print(max(Rsqr_list))
-            maximum_rsqr = max(Rsqr_list)
-            print(Rsqr_regPara)
-            final_regPara = []
+            lr = LinearRegression(featuresCol="Independent_features", labelCol=label)
+            regressor = lr.fit(train_data)
 
-            for key, val in Rsqr_regPara.items():
-                if (key == maximum_rsqr):
-                    print(val)
-                    final_regPara.append(val)
+            # print regressor.featureImportances
 
-            for reg in final_regPara:
-                lr_lasso = LinearRegression(featuresCol="Independent_features", labelCol=label, elasticNetParam=0,
-                                            regParam=reg)
-                regressor = lr_lasso.fit(train_data)
-                training_summary = regressor.summary
-                r2 = training_summary.r2
-                print(r2)
+            # print(dataset.orderBy(feature_colm, ascending=True))
+
+            # pred = regressor.transform(test_data)
+
+            # coefficeint & intercept
 
             print("coefficient : " + str(regressor.coefficients))
             coefficient_t = str(regressor.coefficients)
@@ -114,6 +98,8 @@ class Ridge_reg():
             intercept_t = str(regressor.intercept)
 
             prediction = regressor.evaluate(test_data)
+
+            # VI_IMP = 2
 
             prediction_val = prediction.predictions
             prediction_val.show()
@@ -131,6 +117,7 @@ class Ridge_reg():
             prediction_val_pand_predict = prediction_val_pand["prediction"]
             # print prediction_val_pand_predict
 
+            # test_summary = prediction.summary
 
             # for test data
 
@@ -140,8 +127,9 @@ class Ridge_reg():
 
             lr_prediction_quantile = lr_prediction.select(label, "prediction")
             lr_prediction_onlypred = lr_prediction.select('prediction')
+            # lr_prediction_quantile.show()
 
-            # training_summary = regressor.summary
+            training_summary = regressor.summary
 
             print("numof_Iterations...%d\n" % training_summary.totalIterations)
             print("ObjectiveHistory...%s\n" % str(training_summary.objectiveHistory))
@@ -162,28 +150,45 @@ class Ridge_reg():
             # test.write.csv('/home/fidel/PycharmProjects/predictive_analysis_git', header=True, mode= 'append')
             # residual_graph_pandas = residual_graph.toPandas()
             print("coefficient standard errors: \n" + str(training_summary.coefficientStandardErrors))
-            coefficient_error = str(training_summary.coefficientStandardErrors)
+            coefficientStdError = str(training_summary.coefficientStandardErrors)
             print(" Tvalues :\n" + str(training_summary.tValues))
             T_values = str(training_summary.tValues)
             print(" p values :\n" + str(training_summary.pValues))
             P_values = str(training_summary.pValues)
 
-            #######################################################################################################
-            table_response = {
+            intercept_t = float(intercept_t)
+            coefficientList = regressor.coefficients
+            equation = label, '=', intercept_t, '+'
+            for feature, coeff in zip(feature_colm, coefficientList):
+                coeffFeaure = coeff, '*', feature, '+'
+                equation += coeffFeaure
+            equation = equation[:-1]
+            print(equation)
+            st = list(equation)
 
-                "Intercept": intercept_t,
-                "Coefficients": coefficient_t,
-                "RMSE": RMSE,
-                "MSE": MSE,
-                "R_square": r_square,
-                "Adj_R_square": adjsted_r_square,
-                "Coefficient_error": coefficient_error,
-                "T_value": T_values,
-                "P_value": P_values
+            # significance value
 
-            }
+            '''
+                            PValue = str(P_values)
+                for pValue in PValue:
+                    print(pValue)
+                
+                for pValue in PValue:
+                    if (0 <= pValue < 0.001):
+                        print(pValue, '***')
+                    if (0.001 <= pValue < 0.01):
+                        print(pValue, '**')
+                    if (0.01 <= pValue < 0.05):
+                        print(pValue, '*')
+                    if (0.05 <= pValue < 0.1):
+                        print(pValue, '.')
+                    if (0.1 <= pValue < 1):
+                        print(pValue, ' ')
+            '''
+
+
             #######################################################################################################
-            # residual  vs fitted graph
+            # residual  vs predicted value
 
             prediction_data = regressor.summary.predictions
             prediction_data.show()
@@ -197,13 +202,12 @@ class Ridge_reg():
             pred_residuals = pred_d.join(res_d, on=['row_index']).sort('row_index').drop('row_index')
             pred_residuals.show()
 
-            pred_residuals.write.parquet(
-                'hdfs://10.171.0.181:9000/dev/dmxdeepinsight/datasets/residual_fitted_train.parquet',
-                mode='overwrite')
+            pred_residuals.write.parquet('hdfs://10.171.0.181:9000/dev/dmxdeepinsight/datasets/Q_Q_PLOT.parquet',
+                                         mode='overwrite')
 
-            ######################################################################################
-            # scale location plot training data
 
+            #################################################################################3
+            # scale location plot
             from pyspark.sql.functions import sqrt
 
             from pyspark.sql.functions import abs as ab
@@ -237,7 +241,6 @@ class Ridge_reg():
                 'hdfs://10.171.0.181:9000/dev/dmxdeepinsight/datasets/scale_location_train.parquet',
                 mode='overwrite')
 
-
             ####################################################################################
             # appending predicted value to the dataset
             target = dataset.select(label)
@@ -254,8 +257,43 @@ class Ridge_reg():
 
             pred_target_data_update.show(100)
 
-            ###########################################################
+            ##########################################################################################
 
+            # scale location plot
+
+            # for scale location plot
+            # from pyspark.sql.functions import udf
+            #
+            # def std_res(x):
+            #     res_list = []
+            #     res_list.append(x)
+            #
+            # std_residuals = udf(lambda y: std_res(y), FloatType())
+            #
+            # residuals_std = residuals.withColumn('residuals', std_residuals(col('residuals').cast(FloatType())))
+            #
+            # import statistics
+            # import numpy as np
+            # residuals_panda = residuals.toPandas()
+            # # residuals_panda.residuals = range(residuals_panda.shape[1])
+            # residuals_panda = residuals_panda.values
+            # print(residuals_panda)
+            # stdev_training = statistics.stdev(residuals_panda)
+            # print(stdev_training)
+
+            ############################################################################################################
+
+            # creating the dictionary for storing the result
+
+            # json_response = coefficient_t
+
+            # print(json_response)
+
+            # json_response = {"adjusted r**2 value" : training_summary.r2adj}
+
+            # DATA VISUALIZATION PART
+
+            # finding the quantile in the dataset(Q_Q plot)
             import matplotlib.pyplot as plt
 
             y = 0.1
@@ -264,38 +302,112 @@ class Ridge_reg():
             for i in range(0, 90):
                 x.append(y)
                 y = round(y + 0.01, 2)
-
+            #
+            # for z in x:
+            #     print ("~~~~~   ",z)
+            #
 
             quantile_label = lr_prediction_quantile.approxQuantile(label, x, 0.01)
             # print quantile_label
             quantile_prediction = lr_prediction_quantile.approxQuantile("prediction", x, 0.01)
+            # print quantile_prediction
+            #
+            # Q_label_pred=''
+            # print(len(quantile_label))
+            # length = len(quantile_label)
+            #
+            # for i in range(0,len(quantile_label)):
+            #     Q_label_pred += str(quantile_label[i]) + '|'  +  str(quantile_prediction[i]) + '\n'
 
+            # writing it to the hdfs in parquet file
+            #
+            # quantile_label_tospark = spark.createDataFrame(quantile_label, FloatType())
+            # quantile_label_tospark = quantile_label_tospark.withColumnRenamed("value", "Q_label")
+            #
+            # quantile_prediction_tospark = spark.createDataFrame(quantile_prediction, FloatType())
+            # quantile_prediction_tospark = quantile_prediction_tospark.withColumnRenamed("value", "Q_prediction")
+            #
+            # quant_label = quantile_label_tospark.withColumn('row_index', f.monotonically_increasing_id())
+            # quant_predtiction = quantile_prediction_tospark.withColumn('row_index', f.monotonically_increasing_id())
+            #
+            # final_quantile = quant_label.join(quant_predtiction,on=['row_index']).sort('row_index').drop('row_index')
+            #
+            # final_quantile.show()
+            #
+            # final_quantile.write.parquet('hdfs://10.171.0.181:9000/dev/dmxdeepinsight/datasets/Q_Q_PLOT.parquet',mode='overwrite')
+            #
+            #
+
+            # print(str(Q_label_pred[i]))
+
+            # with open('Q_Q_plot.csv', 'w') as Q_Q:
+            #     writer_Q_Q = csv.writer(Q_Q)
+            #     writer_Q_Q.writerows((quantile_label, quantile_prediction))
+            #
+            # plt.scatter(quantile_label, quantile_prediction)
+            # plt.show()
+
+            ## finding the residual vs fitted graph data
+
+            #
+            #
+            # prediction_val_pand_predict_tospark = spark.createDataFrame(prediction_val_pand_predict, FloatType())
+            # prediction_val_pand_predict_tospark = prediction_val_pand_predict_tospark.withColumnRenamed("value", "prediction")
+            #
+            # prediction_val_pand_residual_tospark = spark.createDataFrame(prediction_val_pand_residual, FloatType())
+            # prediction_val_pand_residual_tospark = prediction_val_pand_residual_tospark.withColumnRenamed("value", "residual")
+            #
+            # pred_spark = prediction_val_pand_predict_tospark.withColumn('row_index', f.monotonically_increasing_id())
+            # res_spark = prediction_val_pand_residual_tospark.withColumn('row_index', f.monotonically_increasing_id())
+            #
+            # final_res_fitted = pred_spark.join(res_spark, on=['row_index'])\
+            #     .sort('row_index').drop('row_index')
+            #
+            # final_res_fitted.show()
+            #
+            # final_res_fitted.write.parquet('hdfs://10.171.0.181:9000/dev/dmxdeepinsight/datasets/RESIDUAL_FITTED_PLOT.parquet',
+            #                              mode='overwrite')
+            #
+
+            # plt.scatter(prediction_val_pand_predict, prediction_val_pand_residual)
+            # plt.axhline(y=0.0, color="red")
+            # plt.xlabel("prediction")
+            # plt.ylabel("residual")
+            # plt.title("residual vs fitted ")
+            # plt.show()
+
+            # creating the csv file and writitng into it
 
             fitted_residual = ''
             print(len(prediction_val_pand_residual))
             length = len(prediction_val_pand_residual)
 
             for i in range(0, len(prediction_val_pand_residual)):
-                fitted_residual += str(prediction_val_pand_predict[i]) + 't' + str(
-                    prediction_val_pand_residual[i]) + 'n'
+                fitted_residual += str(prediction_val_pand_predict[i]) + '|' + str(
+                    prediction_val_pand_residual[i]) + '\n'
 
             with open('residual_vs_fitted.csv', 'w') as r_f:
                 writer_r_f = csv.writer(r_f)
                 writer_r_f.writerows((prediction_val_pand_predict, prediction_val_pand_residual))
 
+            # parquet file writing
 
             ## residual vs leverage graph data
 
             prediction_val_pand_residual
             # extreme value in the predictor colm
             prediction_col_extremeval = lr_prediction_quantile.agg({"prediction": "max"})
+            # prediction_col_extremeval.show()
+
+            # plt.plot(prediction_col_extremeval, prediction_val_pand_residual)
+            # plt.show()
 
             ## scale location graph data
-            import math
 
             prediction_val_pand_residual
             prediction_val_pand_predict
             prediction_val_pand_residual_abs = prediction_val_pand_residual.abs()
+            import math
             sqrt_residual = []
             for x in prediction_val_pand_residual_abs:
                 sqrt_residual.append(math.sqrt(x))
@@ -308,8 +420,10 @@ class Ridge_reg():
 
             # calculating std deviation
             import statistics
+
             print(statistics.stdev(prediction_val_pand_residual))
             stdev_pred = statistics.stdev(prediction_val_pand_residual)
+            # mean = statistics.mean(prediction_val_pand_residual)
 
             # calcuate stnd residuals
             std_res = []
@@ -375,6 +489,7 @@ class Ridge_reg():
                 Q_label_pred += str(val) + 't' + str(quant) + 'n'
 
             plt.scatter(z_theory, z_pract)
+            plt.savefig('q_q')
 
             ####################################################
 
@@ -408,19 +523,73 @@ class Ridge_reg():
             print(scale_predict_residual)
 
             ##########################################################################
+            # import math
+            # sqrt_stdres = []
+            # for x in std_sqrt_residual:
+            #     sqrt_stdres.append(math.sqrt(x))
+            #
+            # scale_predict_residual = ''
+            # for pre, res in zip(prediction_val_pand_predict, sqrt_stdres):
+            #     scale_predict_residual += str(pre) + 't' + str(res) + 'n'
+            # print(scale_predict_residual)
 
+            ###################################3
 
+            # plt.show()
 
-            graph_response = {
-                "Q_Q_plot": Q_label_pred,
-                "residual_fitted": fitted_residual,
-                "scale_location": scale_predict_residual
-            }
+            # scale_predict_residual=''
+            #
+            # print(len(sqrt_residual))
+            # length = len(sqrt_residual)
+            #
+            # for i in range(0, len(std_sqrt_residual)):
+            #     scale_predict_residual += str(prediction_val_pand_predict[i]) + '|' + str(std_sqrt_residual[i]) + '\n'
+
+            # with open('scale_location_plot.csv', 'w') as s_l:
+            #     writer_s_l = csv.writer(s_l)
+            #     writer_s_l.writerows((prediction_val_pand_predict, sqrt_residual))
+
+            # writing to the parquet
+
+            # prediction_val_pand_predict_tospark = spark.createDataFrame(prediction_val_pand_predict, FloatType())
+            # prediction_val_pand_predict_tospark = prediction_val_pand_predict_tospark.withColumnRenamed("value",
+            #                                                                                             "prediction")
+            #
+            # sqrt_residual_tospark= spark.createDataFrame(sqrt_residual, FloatType())
+            # sqrt_residual_tospark = sqrt_residual_tospark.withColumnRenamed("value",
+            #                                                                                               "sqrt_residual")
+            #
+            # pred_spark = prediction_val_pand_predict_tospark.withColumn('row_index', f.monotonically_increasing_id())
+            # res_spark = sqrt_residual_tospark.withColumn('row_index', f.monotonically_increasing_id())
+            #
+            # final_scale_fitted = pred_spark.join(res_spark,on=['row_index']) \
+            #     .sort('row_index').drop('row_index')
+            #
+            # final_scale_fitted.show()
+            #
+            # final_scale_fitted.write.parquet(
+            #     'hdfs://10.171.0.181:9000/dev/dmxdeepinsight/datasets/SCALE_LOCATION_PLOT.parquet',
+            #     mode='overwrite')
+            #
+
+            # dumping the dictionary into json object
+
+            # json_response = {'run_status': 'success', 'PredictiveResponse': resultdf}
 
             json_response = {
 
-                'table_data': table_response,
-                'graph_data': graph_response
+                "Intercept": intercept_t,
+                "Coefficients": coefficient_t,
+                "RMSE": RMSE,
+                "MSE": MSE,
+                "R_square": r_square,
+                "Adj_R_square": adjsted_r_square,
+                "Coefficient_error": coefficientStdError,
+                "T_value": T_values,
+                "P_value": P_values,
+                'Q_Q_plot': Q_label_pred,
+                'residual_fitted': fitted_residual,
+                'scale_location': scale_predict_residual
 
             }
 

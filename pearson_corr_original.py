@@ -1,6 +1,5 @@
-from pyspark.sql import SparkSession
 from pyspark.ml.feature import VectorAssembler
-import json
+from pyspark.sql import SparkSession
 
 # if __name__=="__main__":
 spark = SparkSession.builder.appName("predictive_analysis").master("spark://fidel-Latitude-E5570:7077").getOrCreate()

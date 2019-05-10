@@ -1,15 +1,8 @@
-from pyspark.sql import SparkSession
-from pyspark.ml.feature import VectorAssembler
-from pyspark.ml.feature import RFormula
-from pyspark.ml import Pipeline
+from PredictionAlgorithms.chi_sqr_importance import chi_square_test
 from pyspark.ml.classification import RandomForestClassifier
-from pyspark.ml.feature import IndexToString, StringIndexer, VectorIndexer, VectorAssembler
-from pyspark.ml.evaluation import MulticlassClassificationEvaluator
-from pyspark.ml.feature import StringIndexer, OneHotEncoderEstimator
-from chi_sqr_importance import chi_square_test
-
-
-
+from pyspark.ml.feature import StringIndexer
+from pyspark.ml.feature import VectorIndexer, VectorAssembler
+from pyspark.sql import SparkSession
 
 # if __name__== "__main__":
 spark = SparkSession.builder.appName("predictive analysis").master("local[*]").getOrCreate()
