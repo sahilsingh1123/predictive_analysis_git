@@ -6,16 +6,34 @@ from pyspark.sql.types import *
 
 from PredictionAlgorithms.relationship import Relationship
 
+# from pyspark.sql.functions import max as _max
+# from pyspark.sql.functions import abs
+
+#
+# os.environ['PYSPARK_SUBMIT_ARGS'] = '--jars /home/fidel/software/spark-2.4.0-bin-hadoop2.7/jars/xgboost4j-spark-0.72.jar,/home/fidel/software/spark-2.4.0-bin-hadoop2.7/jars/xgboost4j-0.72.jar pyspark-shell'
+#
+
+
 spark = SparkSession.builder.appName("predictive_Analysis").master("local[*]").getOrCreate()
+# spark.sparkContext.addPyFile('/home/fidel/Downloads/sparkxgb.zip')
 spark.sparkContext.setLogLevel("ERROR")
 
 
-class LinearRegressionModel():
-    def __init__(self, trainDataRatio=0.80):
-        self.trainDataRatio = trainDataRatio
+# spark.sparkContext.addPyFile('/home/fidel/Downloads/xgboost4j-0.72.jar')
+# spark.sparkContext.addPyFile('/home/fidel/Downloads/xgboost4j-spark-0.72.jar')
 
 
-    def linearReg(self, dataset_add, feature_colm, label_colm, relation_list, relation, userId):
+class Ridge_reg():
+    def __init__(self, xt=[0.0, 0.01, 0.05, 0.1, 0.5, 1.0, 0.005, 0.8, 0.3]):
+        self.xt = xt
+
+    def ridge(self, dataset_add, feature_colm, label_colm, relation_list, relation):
+
+        Rsqr_list = []
+        Rsqr_regPara = {}
+        print(self.xt)
+        # print(data_add)
+
         try:
             dataset = spark.read.parquet(dataset_add)
             dataset.show()
@@ -37,20 +55,51 @@ class LinearRegressionModel():
             output.select("Independent_features").show()
             finalized_data = output.select("Independent_features", label)
             finalized_data.show()
-            trainDataRatioTransformed = self.trainDataRatio
-            testDataRatio = 1 - trainDataRatioTransformed
-            train_data, test_data = finalized_data.randomSplit([trainDataRatioTransformed, testDataRatio], seed=40)
 
-            lr = LinearRegression(featuresCol="Independent_features", labelCol=label)
-            regressor = lr.fit(train_data)
-            locationAddress = 'hdfs://10.171.0.181:9000/dev/dmxdeepinsight/datasets/'
+            # splitting the dataset into taining and testing
 
+            train_data, test_data = finalized_data.randomSplit([0.75, 0.25], seed=40)
+
+            ######################################################################33
+
+            for t in self.xt:
+                lr1 = LinearRegression(featuresCol="Independent_features", labelCol=label, elasticNetParam=0,
+                                       regParam=t)
+                regressor1 = lr1.fit(train_data)
+                print(t)
+                print("coefficient : " + str(regressor1.coefficients))
+                reg_sum = regressor1.summary
+                r2 = reg_sum.r2
+                Rsqr_list.append(r2)
+                Rsqr_regPara[r2] = t
+                print(r2)
+
+            print(Rsqr_list)
+            print(max(Rsqr_list))
+            maximum_rsqr = max(Rsqr_list)
+            print(Rsqr_regPara)
+            final_regPara = []
+
+            for key, val in Rsqr_regPara.items():
+                if (key == maximum_rsqr):
+                    print(val)
+                    final_regPara.append(val)
+
+            for reg in final_regPara:
+                lr_lasso = LinearRegression(featuresCol="Independent_features", labelCol=label, elasticNetParam=0,
+                                            regParam=reg)
+                regressor = lr_lasso.fit(train_data)
+                training_summary = regressor.summary
+                r2 = training_summary.r2
+                print(r2)
 
             print("coefficient : " + str(regressor.coefficients))
             coefficient_t = str(regressor.coefficients)
+
             print("intercept : " + str(regressor.intercept))
             intercept_t = str(regressor.intercept)
             prediction = regressor.evaluate(test_data)
+
             prediction_val = prediction.predictions
             prediction_val.show()
             prediction_val_pand = prediction_val.select(label, "prediction").toPandas()
@@ -63,7 +112,9 @@ class LinearRegressionModel():
             lr_prediction = regressor.transform(test_data)
             lr_prediction.groupBy(label, "prediction").count().show()
             lr_prediction_quantile = lr_prediction.select(label, "prediction")
-            training_summary = regressor.summary
+            lr_prediction_onlypred = lr_prediction.select('prediction')
+
+            # training_summary = regressor.summary
 
             print("numof_Iterations...%d\n" % training_summary.totalIterations)
             print("ObjectiveHistory...%s\n" % str(training_summary.objectiveHistory))
@@ -86,47 +137,12 @@ class LinearRegressionModel():
             tValuesList = training_summary.tValues
             print(" p values :\n" + str(training_summary.pValues))
             P_values = str(training_summary.pValues)
-            coefficientList = list(regressor.coefficients)
-
-            #summaryData
-            import pyspark.sql.functions as F
-            import builtins
-            round = getattr(builtins, 'round')
-            print(coefficientList)
-            coefficientListRounded = []
-            for value in coefficientList:
-                coefficientListRounded.append(round(value, 4))
-            # print(coefficientListRounded)
-            # print(intercept_t)
-            interceptRounded = round(float(intercept_t), 4)
-            # print(interceptRounded)
-            # print(RMSE)
-            RMSERounded = round(RMSE, 4)
-            # print(RMSERounded)
-            MSERounded = round(MSE, 4)
-            rSquareRounded = round(r_square, 4)
-            adjustedrSquareRounded = round(adjsted_r_square, 4)
-            coefficientStdError = training_summary.coefficientStandardErrors
-            coefficientStdErrorRounded = []
-            for value in coefficientStdError:
-                coefficientStdErrorRounded.append(round(float(value), 4))
-            print(coefficientStdErrorRounded)
-            tValuesListRounded = []
-            for value in tValuesList:
-                tValuesListRounded.append(round(value, 4))
-            print(tValuesListRounded)
-            pValuesListRounded = []
-            PValuesList = training_summary.pValues
-
-            for value in PValuesList:
-                pValuesListRounded.append(round(value, 4))
-            print(pValuesListRounded)
 
             # regression equation
             intercept_t = float(intercept_t)
             coefficientList = list(regressor.coefficients)
-            equation = label, '=', interceptRounded, '+'
-            for feature, coeff in zip(feature_colm, coefficientListRounded):
+            equation = label, '=', intercept_t, '+'
+            for feature, coeff in zip(feature_colm, coefficientList):
                 coeffFeature = coeff, '*', feature, '+'
                 equation += coeffFeature
             equation = equation[:-1]
@@ -138,7 +154,7 @@ class LinearRegressionModel():
             PValuesList = training_summary.pValues
             significanceObject = {}
 
-            for pValue in pValuesListRounded:
+            for pValue in PValuesList:
                 if (0 <= pValue < 0.001):
                     significanceObject[pValue] = '***'
                 if (0.001 <= pValue < 0.01):
@@ -150,7 +166,6 @@ class LinearRegressionModel():
                 if (0.1 <= pValue < 1):
                     significanceObject[pValue] = '-'
             print(significanceObject)
-
 
             # residual  vs predicted value
 
@@ -165,14 +180,6 @@ class LinearRegressionModel():
 
             pred_residuals = pred_d.join(res_d, on=['row_index']).sort('row_index').drop('row_index')
             pred_residuals.show()
-
-            QQPlot = 'QQPlot.parquet'
-            locationAddress = 'hdfs://10.171.0.181:9000/dev/dmxdeepinsight/datasets/'
-
-            userId = '6786103f-b49b-42f2-ba40-aa8168b65e67'
-
-            QQPlotAddress = locationAddress + userId + QQPlot
-            pred_residuals.write.parquet(QQPlotAddress, mode='overwrite')
 
             # pred_residuals.write.parquet('hdfs://10.171.0.181:9000/dev/dmxdeepinsight/datasets/Q_Q_PLOT.parquet',
             #                              mode='overwrite')
@@ -200,68 +207,10 @@ class LinearRegressionModel():
                                             sqrt(ab(std_resid["std_res"])).alias("sqrt_std_resid"))
             sqrt_std_res.show()
             sqrt_std_res_fitted = sqrt_std_res.select('prediction', 'sqrt_std_resid')
+            sqrt_std_res_fitted.write.parquet(
+                'hdfs://10.171.0.181:9000/dev/dmxdeepinsight/datasets/scale_location_train.parquet',
+                mode='overwrite')
 
-            scaleLocationPlot = 'scaleLocation.parquet'
-
-            scaleLocationPlotAddress = locationAddress + userId + scaleLocationPlot
-            sqrt_std_res_fitted.write.parquet(scaleLocationPlotAddress, mode='overwrite')
-
-            # sqrt_std_res_fitted.write.parquet(
-            #     'hdfs://10.171.0.181:9000/dev/dmxdeepinsight/datasets/scale_location_train.parquet',
-            #     mode='overwrite')
-            ###########
-            #QQplot
-            # QUANTILE
-
-            from scipy.stats import norm
-            import statistics
-            import math
-
-            res_d.show()
-            sorted_res = res_d.sort('residuals')
-            sorted_res.show()
-            # stdev_ress = sorted_res.select(stdDev(col('residuals')).alias('std_dev'),
-            #                                meann(col('residuals')).alias('mean'))
-            # stdev_ress.show()
-            # mean_residual = stdev_ress.select(['mean']).toPandas()
-            # l = mean_residual.values.tolist()
-            # print(l)
-            # stddev_residual = stdev_ress.select(['std_dev']).toPandas()
-            # length of the sorted std residuals
-            count = sorted_res.groupBy().count().toPandas()
-            countList = count.values.tolist()
-            tuple1 = ()
-            for k in countList:
-                tuple1 = k
-            for tu in tuple1:
-                lengthResiduals = tu
-            print(lengthResiduals)
-            quantileList = []
-            for x in range(0, lengthResiduals):
-                quantileList.append((x - 0.5) / (lengthResiduals))
-
-            print(quantileList)
-
-            # Z-score on theoritical quantile
-
-            zTheoriticalTrain = []
-            for x in quantileList:
-                zTheoriticalTrain.append(norm.ppf(abs(x)))
-            print(zTheoriticalTrain)
-
-            sortedResidualPDF = sorted_res.select('residuals').toPandas()
-            sortedResidualPDF = sortedResidualPDF['residuals']
-            stdevResidualTrain = statistics.stdev(sortedResidualPDF)
-            meanResidualTrain = statistics.mean(sortedResidualPDF)
-
-            zPracticalTrain = []
-            for x in sortedResidualPDF:
-                zPracticalTrain.append((x - meanResidualTrain) / stdevResidualTrain)
-
-
-
-
-            ##########
             target = dataset.select(label)
             pred = prediction_data.select(['prediction'])
             pred_d = pred.withColumn('row_index', f.monotonically_increasing_id())
@@ -275,22 +224,19 @@ class LinearRegressionModel():
             pred_target_data_update = dataset.join(pred_target, on=[label])
 
             pred_target_data_update.show(100)
+            table_response = {
 
+                "Intercept": intercept_t,
+                "Coefficients": coefficient_t,
+                "RMSE": RMSE,
+                "MSE": MSE,
+                "R_square": r_square,
+                "Adj_R_square": adjsted_r_square,
+                "coefficientStdError": coefficientStdError,
+                "T_value": T_values,
+                "P_value": P_values
 
-            ##########3
-            # table_response = {
-            #
-            #     "Intercept": intercept_t,
-            #     "Coefficients": coefficient_t,
-            #     "RMSE": RMSE,
-            #     "MSE": MSE,
-            #     "R_square": r_square,
-            #     "Adj_R_square": adjsted_r_square,
-            #     "coefficientStdError": coefficientStdError,
-            #     "T_value": T_values,
-            #     "P_value": P_values
-            #
-            # }
+            }
             y = 0.1
             x = []
 
@@ -314,6 +260,7 @@ class LinearRegressionModel():
             for i in range(0, len(prediction_val_pand_residual)):
                 fitted_residual += str(prediction_val_pand_predict[i]) + 't' + str(prediction_val_pand_residual[i]) + 'n'
             ## scale location graph data
+            import math
 
             prediction_val_pand_residual
             prediction_val_pand_predict
@@ -397,22 +344,23 @@ class LinearRegressionModel():
 
             tableContent = \
                 {
-                    'coefficientValuesKey': coefficientListRounded,
-                    'tValuesKey': tValuesListRounded,
-                    'pValuesKey': pValuesListRounded,
+                    'coefficientValuesKey': coefficientList,
+                    'tValuesKey': tValuesList,
+                    'pValuesKey': PValuesList,
                     'significanceValuesKey': significanceObject,
-                    'interceptValuesKey': interceptRounded,
-                    "RMSE": RMSERounded,
-                    "RSquare": rSquareRounded,
-                    "AdjRSquare": adjustedrSquareRounded,
-                    "CoefficientStdError": coefficientStdErrorRounded,
-                    'equationKey': equation
+                    'interceptValuesKey': intercept_t,
+                    "RMSE": RMSE,
+                    "RSquare": r_square,
+                    "AdjRSquare": adjsted_r_square,
+                    "CoefficientStdError": coefficientStdError,
+                    'equationKey' : equation
                 }
+            print(tableContent)
 
             json_response = {
 
-                'table_data': tableContent,
-                'graph_data' : graph_response
+                'table_data': table_response,
+                'graph_data': graph_response
 
 
             }

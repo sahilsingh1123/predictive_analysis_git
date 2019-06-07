@@ -13,7 +13,7 @@ spark.sparkContext.setLogLevel("ERROR")
 def randomClassifier(dataset_add, feature_colm, label_colm,relation_list, relation):
     try:
         # dataset = spark.read.parquet(dataset_add)
-        dataset = spark.read.csv(dataset_add, header=True, inferSchema=True)
+        dataset = spark.read.csv(dataset_add, header=True, inferSchema=True, sep=';')
 
         dataset.show()
 
@@ -22,47 +22,68 @@ def randomClassifier(dataset_add, feature_colm, label_colm,relation_list, relati
             label = y
 
         print(label)
+        #
+        # summaryList = ['mean', 'stddev', 'min', 'max']
+        # summaryDict = {}
+        # for colm in feature_colm:
+        #     summaryListTemp = []
+        #     for value in summaryList:
+        #         summ = list(dataset.select(colm).summary(value).toPandas()[colm])
+        #         summaryListTemp.append(summ)
+        #     varianceListTemp = list(dataset.select(variance(col(colm)).alias(colm)).toPandas()[colm])
+        #     summaryListTemp.append(varianceListTemp)
+        #     summaryDict[colm] = summaryListTemp
+        # summaryList.append('variance')
+        # summaryDict['summaryName'] = summaryList
+        #
+        # print(summaryDict)
+
+        # print(summaryDict)
+        # varianceDict = {}
+        # for colm in feature_colm:
+        #     varianceListTemp = list(dataset.select(variance(col(colm)).alias(colm)).toPandas()[colm])
+        #     varianceDict[colm] = varianceListTemp
+        # print(varianceDict)
+
+        # summaryAll = {'summaryDict': summaryDict, 'varianceDict': varianceDict}
+        # print(summaryAll)
+
+        # extracting the schema
+
+        schemaDataset = dataset.schema
+
+        stringFeatures = []
+        numericalFeatures = []
+
+        for x in schemaDataset:
+            if (str(x.dataType) == "StringType" ):
+                for y in feature_colm:
+                    if x.name == y:
+                        stringFeatures.append(x.name)
+            else:
+                for y in feature_colm:
+                    if x.name == y:
+                        numericalFeatures.append(x.name)
+
+        print(stringFeatures)
+        print(numericalFeatures)
 
         summaryList = ['mean', 'stddev', 'min', 'max']
         summaryDict = {}
-        for colm in feature_colm:
+        for colm in numericalFeatures:
             summaryListTemp = []
             for value in summaryList:
                 summ = list(dataset.select(colm).summary(value).toPandas()[colm])
                 summaryListTemp.append(summ)
-            summaryDict[colm] = summaryListTemp
-        summaryDict['summaryName'] = summaryList
-
-        # print(summaryDict)
-        varianceDict = {}
-        for colm in feature_colm:
             varianceListTemp = list(dataset.select(variance(col(colm)).alias(colm)).toPandas()[colm])
-            varianceDict[colm] = varianceListTemp
-        # print(varianceDict)
+            summaryListTemp.append(varianceListTemp)
+            summaryDict[colm] = summaryListTemp
+        summaryList.append('variance')
+        summaryDict['summaryName'] = summaryList
+        summaryDict['categoricalColumn'] = stringFeatures
+        print(summaryDict)
 
-        summaryAll = {'summaryDict': summaryDict, 'varianceDict': varianceDict}
-        print(summaryAll)
-
-        # extracting the schema
-
-        val = dataset.schema
-
-        string_features = []
-        integer_features = []
-
-        for x in val:
-            if (str(x.dataType) == "StringType" ):
-                for y in feature_colm:
-                    if x.name == y:
-                        string_features.append(x.name)
-            else:
-                for y in feature_colm:
-                    if x.name == y:
-                        integer_features.append(x.name)
-
-        print(string_features)
-        print(integer_features)
-        print(val)
+        # print(val)
 
         if relation == 'linear':
             dataset = dataset
@@ -72,7 +93,7 @@ def randomClassifier(dataset_add, feature_colm, label_colm,relation_list, relati
 
         # calling pearson test fuction
 
-        response_pearson_test = Correlation_test_imp(dataset=dataset, features = integer_features, label_col= label)
+        response_pearson_test = Correlation_test_imp(dataset=dataset, features = numericalFeatures, label_col= label)
 
 
         # dataset = dataset.withColumnRenamed(label , 'indexed_'+ label)
@@ -89,7 +110,7 @@ def randomClassifier(dataset_add, feature_colm, label_colm,relation_list, relati
         ###########################################################################
         indexed_features = []
         encoded_features = []
-        for colm in string_features:
+        for colm in stringFeatures:
             indexer = StringIndexer(inputCol=colm, outputCol='indexed_' + colm).fit(dataset)
             indexed_features.append('indexed_'+colm)
             dataset = indexer.transform(dataset)
@@ -104,7 +125,7 @@ def randomClassifier(dataset_add, feature_colm, label_colm,relation_list, relati
 
         # combining both the features colm together
 
-        final_features = integer_features + indexed_features
+        final_features = numericalFeatures + indexed_features
 
         print(final_features)
 
@@ -197,14 +218,15 @@ def randomClassifier(dataset_add, feature_colm, label_colm,relation_list, relati
         print(feature_importance)
 
 
-        features_column_for_user = integer_features + string_features
+        features_column_for_user = numericalFeatures + stringFeatures
 
         feature_imp = { 'feature_importance': feature_importance,"feature_column" : features_column_for_user}
 
 
         response_dict = {
             'feature_importance': feature_imp,
-            'pearson_test_data': response_pearson_test
+            'pearson_test_data': response_pearson_test,
+            'summaryDict' : summaryDict
         }
 
         return response_dict

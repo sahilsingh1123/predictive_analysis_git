@@ -1,7 +1,7 @@
 import csv
 
 import pyspark.sql.functions as f
-from pyspark.ml.feature import VectorAssembler
+from pyspark.ml.feature import VectorAssembler, StringIndexer, VectorIndexer, OneHotEncoderEstimator
 from pyspark.ml.regression import LinearRegression
 from pyspark.sql import SparkSession
 from pyspark.sql.types import *
@@ -25,71 +25,76 @@ class LinearRegressionModel():
         self.trainDataRatio = trainDataRatio
 
 
-    def linearReg(self, dataset_add, feature_colm, label_colm, relation_list, relation):
+    def linearReg(self, dataset_add, feature_colm, label_colm, relation_list, relation,userId):
         try:
             dataset = spark.read.csv(dataset_add, header=True, inferSchema=True)
             dataset.show()
-            
-            # renaming the colm
-            # print(label_colm)
-            # dataset.withColumnRenamed(label_colm, "label")
-            # print(label_colm)
-            # dataset.show()
-
             label = ''
-            for y in label_colm:
-                label = y
-
-            print(label)
-
-            dictionary_list = {'log_list': ["CYLINDERS"],
-                               'sqrt_list': ["WEIGHT"],
-                               'cubic_list': ["ACCELERATION"]}
-
-            relationship_val = 'linear_reg'
-
-            if relationship_val == 'linear_reg':
+            for val in label_colm:
+                label = val
+            Schema = dataset.schema
+            stringFeatures = []
+            numericalFeatures = []
+            for x in Schema:
+                if (str(x.dataType) == "StringType"):
+                    for y in feature_colm:
+                        if x.name == y:
+                            stringFeatures.append(x.name)
+                else:
+                    for y in feature_colm:
+                        if x.name == y:
+                            numericalFeatures.append(x.name)
+            if relation == 'linear':
                 print('linear relationship')
-            else:
-                dataset = Relationship(dataset, dictionary_list)
-
+            if relation == 'non_linear':
+                dataset = Relationship(dataset, relation_list)
             dataset.show()
+            for x in Schema:
+                if (str(x.dataType) == "StringType" and x.name == label):
+                    for labelkey in label_colm:
+                        label_indexer = StringIndexer(inputCol=label, outputCol='indexed_' + label).fit(dataset)
+                        dataset = label_indexer.transform(dataset)
+                        label = 'indexed_' + label
+                else:
+                    label = label
+            indexed_features = []
+            for colm in stringFeatures:
+                indexer = StringIndexer(inputCol=colm, outputCol='indexed_' + colm).fit(dataset)
+                indexed_features.append('indexed_' + colm)
+                dataset = indexer.transform(dataset)
+            final_features = numericalFeatures + indexed_features
+            featureassembler = VectorAssembler(inputCols=final_features,
+                                               outputCol="features")
+            dataset = featureassembler.transform(dataset)
+            vectorIndexer = VectorIndexer(inputCol='features', outputCol='vectorIndexedFeatures', maxCategories=4).fit(
+                dataset)
+            dataset = vectorIndexer.transform(dataset)
 
-            # implementing the vector assembler
-
-            featureassembler = VectorAssembler(inputCols=feature_colm,
-                                               outputCol="Independent_features")
-
-            output = featureassembler.transform(dataset)
-
-            output.show()
-            output.select("Independent_features").show()
-
-            finalized_data = output.select("Independent_features", label)
-
-            finalized_data.show()
-
-            for x in self.trainDataRatio:
-                trainDataRatioTransformed = x
+            trainDataRatioTransformed = self.trainDataRatio
             testDataRatio = 1 - trainDataRatioTransformed
-
-            # splitting the dataset into taining and testing
-            # testDataRatio = 1-self.trainDataRatio
-
-            train_data, test_data = finalized_data.randomSplit([trainDataRatioTransformed, testDataRatio], seed=40)
+            trainingData, testData = dataset.randomSplit([trainDataRatioTransformed, testDataRatio], seed=40)
 
             # applying the model
 
-            lr = LinearRegression(featuresCol="Independent_features", labelCol=label)
-            regressor = lr.fit(train_data)
+            lr = LinearRegression(featuresCol="vectorIndexedFeatures", labelCol=label)
+            regressor = lr.fit(trainingData)
+
+            locationAddress = 'hdfs://10.171.0.181:9000/dev/dmxdeepinsight/datasets/'
+            modelPersist = 'linearRegressorModel.parquet'
+            modelStorageLocation = locationAddress + userId + modelPersist
+            regressor.write().overwrite().save(modelStorageLocation)
 
             # print regressor.featureImportances
 
             # print(dataset.orderBy(feature_colm, ascending=True))
 
-            # pred = regressor.transform(test_data)
+            # pred = regressor.transform(testData)
 
             # coefficeint & intercept
+
+
+            # saving the model and test dataset as csv file
+
 
             print("coefficient : " + str(regressor.coefficients))
             coefficient_t = str(regressor.coefficients)
@@ -97,7 +102,7 @@ class LinearRegressionModel():
             print("intercept : " + str(regressor.intercept))
             intercept_t = str(regressor.intercept)
 
-            prediction = regressor.evaluate(test_data)
+            prediction = regressor.evaluate(testData)
 
             # VI_IMP = 2
 
@@ -121,7 +126,7 @@ class LinearRegressionModel():
 
             # for test data
 
-            lr_prediction = regressor.transform(test_data)
+            lr_prediction = regressor.transform(testData)
 
             lr_prediction.groupBy(label, "prediction").count().show()
 
@@ -153,38 +158,39 @@ class LinearRegressionModel():
             coefficientStdError = str(training_summary.coefficientStandardErrors)
             print(" Tvalues :\n" + str(training_summary.tValues))
             T_values = str(training_summary.tValues)
+            tValuesList = training_summary.tValues
             print(" p values :\n" + str(training_summary.pValues))
             P_values = str(training_summary.pValues)
 
+            # regression equation
             intercept_t = float(intercept_t)
-            coefficientList = regressor.coefficients
+            coefficientList = list(regressor.coefficients)
             equation = label, '=', intercept_t, '+'
             for feature, coeff in zip(feature_colm, coefficientList):
-                coeffFeaure = coeff, '*', feature, '+'
-                equation += coeffFeaure
+                coeffFeature = coeff, '*', feature, '+'
+                equation += coeffFeature
             equation = equation[:-1]
             print(equation)
             st = list(equation)
 
             # significance value
 
-            '''
-                            PValue = str(P_values)
-                for pValue in PValue:
-                    print(pValue)
-                
-                for pValue in PValue:
-                    if (0 <= pValue < 0.001):
-                        print(pValue, '***')
-                    if (0.001 <= pValue < 0.01):
-                        print(pValue, '**')
-                    if (0.01 <= pValue < 0.05):
-                        print(pValue, '*')
-                    if (0.05 <= pValue < 0.1):
-                        print(pValue, '.')
-                    if (0.1 <= pValue < 1):
-                        print(pValue, ' ')
-            '''
+            PValuesList = training_summary.pValues
+            significanceObject = {}
+
+            for pValue in PValuesList:
+                if (0 <= pValue < 0.001):
+                    significanceObject[pValue] = '***'
+                if (0.001 <= pValue < 0.01):
+                    significanceObject[pValue] = '**'
+                if (0.01 <= pValue < 0.05):
+                    significanceObject[pValue] = '*'
+                if (0.05 <= pValue < 0.1):
+                    significanceObject[pValue] = '.'
+                if (0.1 <= pValue < 1):
+                    significanceObject[pValue] = '-'
+            print(significanceObject)
+
 
 
             #######################################################################################################
@@ -202,15 +208,25 @@ class LinearRegressionModel():
             pred_residuals = pred_d.join(res_d, on=['row_index']).sort('row_index').drop('row_index')
             pred_residuals.show()
 
-            pred_residuals.write.parquet('hdfs://10.171.0.181:9000/dev/dmxdeepinsight/datasets/Q_Q_PLOT.parquet',
-                                         mode='overwrite')
+            # pred_residuals.write.parquet('hdfs://10.171.0.181:9000/dev/dmxdeepinsight/datasets/Q_Q_PLOT.parquet',
+            #                              mode='overwrite')
+
+            '''
+                        
+            userId = 'sahil123'
+            graphName = 'QQPlot.parquet'
+            locationAddress = '/home/fidel/mltest/'
+            
+            finalLocation = locationAddress + userId + graphName
+            print(finalLocation)
+            pred_residuals.write.parquet(finalLocation,mode='overwrite')
+    
+            '''
 
 
             #################################################################################3
             # scale location plot
-            from pyspark.sql.functions import sqrt
-
-            from pyspark.sql.functions import abs as ab
+            from pyspark.sql.functions import abs as ab, sqrt, mean as meann, stddev as stdDev
 
             df_label = prediction_data.select(label, 'prediction',
                                               sqrt(ab(prediction_data[label])).alias("sqrt_label"))
@@ -237,9 +253,63 @@ class LinearRegressionModel():
             sqrt_std_res.show()
             sqrt_std_res_fitted = sqrt_std_res.select('prediction', 'sqrt_std_resid')
 
-            sqrt_std_res_fitted.write.parquet(
-                'hdfs://10.171.0.181:9000/dev/dmxdeepinsight/datasets/scale_location_train.parquet',
-                mode='overwrite')
+            # sqrt_std_res_fitted.write.parquet(
+            #     'hdfs://10.171.0.181:9000/dev/dmxdeepinsight/datasets/scale_location_train.parquet',
+            #     mode='overwrite')
+
+            ######################################################################################
+            # QUANTILE
+
+            from scipy.stats import norm
+            import statistics
+            import math
+
+
+            res_d.show()
+            sorted_res = res_d.sort('residuals')
+            sorted_res.show()
+            # stdev_ress = sorted_res.select(stdDev(col('residuals')).alias('std_dev'),
+            #                                meann(col('residuals')).alias('mean'))
+            # stdev_ress.show()
+            # mean_residual = stdev_ress.select(['mean']).toPandas()
+            # l = mean_residual.values.tolist()
+            # print(l)
+            # stddev_residual = stdev_ress.select(['std_dev']).toPandas()
+            # length of the sorted std residuals
+            count = sorted_res.groupBy().count().toPandas()
+            countList = count.values.tolist()
+            tuple1 = ()
+            for k in countList:
+                tuple1 = k
+            for tu in tuple1:
+                lengthResiduals = tu
+            print(lengthResiduals)
+            quantileList = []
+            for x in range(0, lengthResiduals):
+                quantileList.append((x - 0.5) / (lengthResiduals))
+
+            print(quantileList)
+
+            # Z-score on theoritical quantile
+
+            zTheoriticalTrain = []
+            for x in quantileList:
+                zTheoriticalTrain.append(norm.ppf(abs(x)))
+            print(zTheoriticalTrain)
+
+            sortedResidualPDF = sorted_res.select('residuals').toPandas()
+            sortedResidualPDF = sortedResidualPDF['residuals']
+            stdevResidualTrain = statistics.stdev(sortedResidualPDF)
+            meanResidualTrain = statistics.mean(sortedResidualPDF)
+
+            zPracticalTrain = []
+            for x in sortedResidualPDF:
+                zPracticalTrain.append((x - meanResidualTrain) / stdevResidualTrain)
+
+            # schema = StructType([StructField('zTheoriticalTrain', FloatType(), True),
+            #                      StructField('zPracticalTrain', FloatType(), True)
+            #                      ])
+            # spark.createDataFrame(zPracticalTrain, FloatType()).show()
 
             ####################################################################################
             # appending predicted value to the dataset
@@ -261,7 +331,7 @@ class LinearRegressionModel():
 
             # scale location plot
 
-            # for scale location plot
+            # for scale location plotequationAsList
             # from pyspark.sql.functions import udf
             #
             # def std_res(x):
@@ -296,20 +366,20 @@ class LinearRegressionModel():
             # finding the quantile in the dataset(Q_Q plot)
             import matplotlib.pyplot as plt
 
-            y = 0.1
-            x = []
-
-            for i in range(0, 90):
-                x.append(y)
-                y = round(y + 0.01, 2)
+            # y = 0.1
+            # x = []
+            #
+            # for i in range(0, 90):
+            #     x.append(y)
+            #     y = round(y + 0.01, 2)
             #
             # for z in x:
             #     print ("~~~~~   ",z)
             #
 
-            quantile_label = lr_prediction_quantile.approxQuantile(label, x, 0.01)
+            # quantile_label = lr_prediction_quantile.approxQuantile(label, x, 0.01)
             # print quantile_label
-            quantile_prediction = lr_prediction_quantile.approxQuantile("prediction", x, 0.01)
+            # quantile_prediction = lr_prediction_quantile.approxQuantile("prediction", x, 0.01)
             # print quantile_prediction
             #
             # Q_label_pred=''
@@ -377,7 +447,7 @@ class LinearRegressionModel():
             # plt.show()
 
             # creating the csv file and writitng into it
-
+            import math
             fitted_residual = ''
             print(len(prediction_val_pand_residual))
             length = len(prediction_val_pand_residual)
@@ -483,8 +553,8 @@ class LinearRegressionModel():
             print(x)
 
             Q_label_pred = ''
-            print(len(quantile_label))
-            length = len(quantile_label)
+            # print(len(quantile_label))
+            # length = len(quantile_label)
             for quant, val in zip(z_theory, z_pract):
                 Q_label_pred += str(val) + 't' + str(quant) + 'n'
 
@@ -549,6 +619,8 @@ class LinearRegressionModel():
             #     writer_s_l = csv.writer(s_l)
             #     writer_s_l.writerows((prediction_val_pand_predict, sqrt_residual))
 
+
+
             # writing to the parquet
 
             # prediction_val_pand_predict_tospark = spark.createDataFrame(prediction_val_pand_predict, FloatType())
@@ -575,6 +647,21 @@ class LinearRegressionModel():
             # dumping the dictionary into json object
 
             # json_response = {'run_status': 'success', 'PredictiveResponse': resultdf}
+
+            tableContent = \
+                {
+                    'coefficientValuesKey': coefficientList,
+                    'tValuesKey': tValuesList,
+                    'pValuesKey': PValuesList,
+                    'significanceValuesKey': significanceObject,
+                    'interceptValuesKey': intercept_t,
+                    "RMSE": RMSE,
+                    "RSquare": r_square,
+                    "AdjRSquare": adjsted_r_square,
+                    "CoefficientStdError": coefficientStdError,
+
+                }
+            print(tableContent)
 
             json_response = {
 

@@ -1,8 +1,7 @@
-from pyspark.sql import SparkSession
-from pyspark.ml.feature import RFormula
-from pyspark.ml.stat import ChiSquareTest
-from pyspark.ml.feature import IndexToString, StringIndexer, VectorIndexer, VectorAssembler
 from pyspark.ml.feature import ChiSqSelector
+from pyspark.ml.feature import VectorIndexer, VectorAssembler
+from pyspark.ml.stat import ChiSquareTest
+from pyspark.sql import SparkSession
 
 
 def chi_square_test(dataset,features, label_col):

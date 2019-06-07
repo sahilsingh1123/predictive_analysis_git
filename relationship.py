@@ -6,6 +6,7 @@ from pyspark.sql.types import *
 
 
 def Relationship(dataset, dictionary_list):
+    dataset.show()
     # Relationship_val = 'log_list'
     # Relationship_colm = ["CYLINDERS", "WEIGHT", "ACCELERATION", "DISPLACEMENT"]
     #
@@ -16,7 +17,7 @@ def Relationship(dataset, dictionary_list):
 
     def Relation_dataset(dictionary_list, dataset):
         # creating the udf
-
+        dataset.show()
 
 
         def log_list(x):

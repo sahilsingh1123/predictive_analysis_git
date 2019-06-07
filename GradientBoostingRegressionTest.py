@@ -1,0 +1,131 @@
+from pyspark.ml.regression import GBTRegressor
+from pyspark.ml.evaluation import RegressionEvaluator
+from pyspark.ml.feature import VectorAssembler, StringIndexer, VectorIndexer
+from pyspark.sql import SparkSession
+
+from PredictionAlgorithms.relationship import Relationship
+
+spark = SparkSession.builder.appName('predictive_Analysis').master('local[*]').getOrCreate()
+spark.sparkContext.setLogLevel('ERROR')
+'''
+trainDataRation = ration of training data, take input from the user
+learningRate = learning rate applied on the model, take input from the user
+dataset_add = dataset address, from the user
+feature_colm = column as a features is taken from the user
+relation_list = relationship list of each column needed to be applied
+relation = whether it is linear relation or non linear taken from the user end
+'''
+
+class GradientBoostRegression():
+    def __init__(self, trainDataRatio=0.80, learningRate=0.1):
+        self.trainDataRatio = trainDataRatio
+        self.learningRate = learningRate
+
+    def GradientBoostingRegression(self, dataset_add, feature_colm, label_colm, relation_list, relation):
+        try:
+            dataset = spark.read.csv(dataset_add, header=True, inferSchema=True)
+            dataset.show()
+            label = ''
+            for val in label_colm:
+                label = val
+            Schema = dataset.schema
+            stringFeatures = []
+            numericalFeatures = []
+            for x in Schema:
+                if (str(x.dataType) == "StringType" or str(x.dataType) == 'TimestampType' or str(
+                        x.dataType) == 'DateType' or str(x.dataType) == 'BooleanType' or str(x.dataType) == 'BinaryType'):
+                    for y in feature_colm:
+                        if x.name == y:
+                            dataset = dataset.withColumn(y, dataset[y].cast(StringType()))
+                            stringFeatures.append(x.name)
+                else:
+                    for y in feature_colm:
+                        if x.name == y:
+                            numericalFeatures.append(x.name)
+
+            print(stringFeatures, numericalFeatures)
+            dataset.printSchema()
+
+            for x in Schema:
+                if (str(x.dataType) == "StringType" and x.name == label):
+                    for labelkey in label_colm:
+                        label_indexer = StringIndexer(inputCol=label, outputCol='indexed_' + label).fit(dataset)
+                        dataset = label_indexer.transform(dataset)
+                        label = 'indexed_' + label
+                else:
+                    label = label
+            indexed_features = []
+            encodedFeatures = []
+            for colm in stringFeatures:
+                indexer = StringIndexer(inputCol=colm, outputCol='indexed_' + colm).fit(dataset)
+                indexed_features.append('indexed_' + colm)
+                dataset = indexer.transform(dataset)
+            featureAssembler = VectorAssembler(inputCols=indexed_features + numericalFeatures, outputCol='features')
+            dataset = featureAssembler.transform(dataset)
+            vectorIndexer = VectorIndexer(inputCol='features', outputCol='vectorIndexedFeatures', maxCategories=4).fit(
+                dataset)
+            dataset = vectorIndexer.transform(dataset)
+            trainDataRatioTransformed = self.trainDataRatio
+            testDataRatio = 1 - trainDataRatioTransformed
+            trainingData, testData = dataset.randomSplit([trainDataRatioTransformed, testDataRatio], seed=0)
+            stepSize = self.learningRate
+
+            gradientBoostingmodel = GBTRegressor(labelCol=label, featuresCol='vectorIndexedFeatures', maxIter=10,
+                                                 stepSize=stepSize)
+            gradientBoostFittingTrainingData = gradientBoostingmodel.fit(trainingData)
+            gBPredictionTrainData = gradientBoostFittingTrainingData.transform(trainingData)
+            gBPredictionTestData = gradientBoostFittingTrainingData.transform(testData)
+            gBPredictionTestData.select('prediction', label).show()
+            # gbtModel = gradientBoostFittingTrainingData.stages
+            featureImportance = gradientBoostFittingTrainingData.featureImportances.toArray().tolist()
+            print(featureImportance)
+
+            # prediction graph data
+            from pyspark.sql.functions import col
+            TrainPredictedTargetData = gBPredictionTrainData.select(label, 'prediction')
+            residualsTrainData = TrainPredictedTargetData.withColumn('residuals', col(label) - col('prediction'))
+            residualsTrainData.show()
+
+            TestPredictedTargetData = gBPredictionTestData.select(label, 'prediction')
+            residualsTestData = TestPredictedTargetData.withColumn('residuals', col(label) - col('prediction'))
+            residualsTestData.show()
+
+            # train Test data Metrics
+            gBPredictionDataDict = {'gBPredictionTestData': gBPredictionTestData,
+                                    'gBPredictionTrainData': gBPredictionTrainData}
+            metricsList = ['r2', 'rmse', 'mse', 'mae']
+            for key, value in gBPredictionDataDict.items():
+                if key == 'gBPredictionTestData':
+                    testDataMetrics = {}
+                    for metric in metricsList:
+                        evaluator = RegressionEvaluator(labelCol=label, predictionCol="prediction", metricName=metric)
+                        metricValue = evaluator.evaluate(gBPredictionTestData)
+                        testDataMetrics[metric] = metricValue
+                    print('testDataMetrics :', testDataMetrics)
+
+                if key == 'gBPredictionTrainData':
+                    trainDataMetrics = {}
+                    for metric in metricsList:
+                        evaluator = RegressionEvaluator(labelCol=label, predictionCol="prediction", metricName=metric)
+                        metricValue = evaluator.evaluate(gBPredictionTrainData)
+                        trainDataMetrics[metric] = metricValue
+                    print('trainDataMetrics :', trainDataMetrics)
+
+            # while fitting the training data
+            totalNumberTrees = gradientBoostFittingTrainingData.getNumTrees
+            print('Total number of trees used is :', totalNumberTrees)
+            totalNumberNodes = gradientBoostFittingTrainingData.totalNumNodes
+            print('Total number of node is :', totalNumberNodes)
+            treeWeight = gradientBoostFittingTrainingData.treeWeights
+            print('Weights on each tree is :', treeWeight)
+            treeInfo = gradientBoostFittingTrainingData.trees
+            for eachTree in treeInfo:
+                print('info of each tree is :', eachTree)
+
+
+
+
+
+        except Exception as e:
+            print('exception is --', e)
+            stepSize=self.learningRate

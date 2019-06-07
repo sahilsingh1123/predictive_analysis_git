@@ -24,10 +24,22 @@ def Correlation_test_imp(dataset, features, label_col):
     print("pearson correlation matrix : \n : " + str(r1p[0]))
     pearson_matrix = r1p[0].toArray().tolist()
 
+    pearsonMatrix = []
+    for everylist in pearson_matrix:
+        insideList = []
+        for listinlist in everylist:
+            insideList.append(round(listinlist, 4))
+
+        pearsonMatrix.append(insideList)
+
+    print(pearsonMatrix)
+
+
     pearson_value_d = []
 
     for x in r1p[0].toArray():
-        pearson_value_d.append(x[0])
+        pearson_value_d.append(round(x[0],4))
+        # pearson_value_d.append(x[0])
 
     print(pearson_value_d)
 
