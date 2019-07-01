@@ -7,40 +7,32 @@ from pyspark.ml.regression import LinearRegression
 from pyspark.sql import SparkSession
 from pyspark.sql.types import *
 from PredictionAlgorithms.relationship import Relationship
-# from pyspark.sql.functions import max as _max
-# from pyspark.sql.functions import abs
 
-import os
-#
-# os.environ['PYSPARK_SUBMIT_ARGS'] = '--jars /home/fidel/software/spark-2.4.0-bin-hadoop2.7/jars/xgboost4j-spark-0.72.jar,/home/fidel/software/spark-2.4.0-bin-hadoop2.7/jars/xgboost4j-0.72.jar pyspark-shell'
-#
-
-
-
-spark = SparkSession.builder.appName("predictive_Analysis").master("local[*]").getOrCreate()
-# spark.sparkContext.addPyFile('/home/fidel/Downloads/sparkxgb.zip')
-spark.sparkContext.setLogLevel("ERROR")
-
-# spark.sparkContext.addPyFile('/home/fidel/Downloads/xgboost4j-0.72.jar')
-# spark.sparkContext.addPyFile('/home/fidel/Downloads/xgboost4j-spark-0.72.jar')
-
-
+spark = SparkSession.builder.appName('predictive_Analysis').master('local[*]').getOrCreate()
+spark.sparkContext.setLogLevel('ERROR')
+'''
+trainDataRation = ration of training data, take input from the user
+learningRate = learning rate applied on the model, take input from the user
+dataset_add = dataset address, from the user
+feature_colm = column as a features is taken from the user
+relation_list = relationship list of each column needed to be applied
+relation = whether it is linear relation or non linear taken from the user end
+'''
 
 class Ridge_reg():
-    def __init__(self, xt=[0.0, 0.01, 0.05, 0.1, 0.5, 1.0, 0.005, 0.8, 0.3]):
+    def __init__(self, xt=[0.0, 0.01, 0.05, 0.1, 0.5, 1.0, 0.005, 0.8, 0.3], trainDataRatio=0.80):
         self.xt = xt
+        self.trainDataRatio = trainDataRatio
 
-    def ridge(self, dataset_add, feature_colm, label_colm, relation_list, relation):
 
-
-        Rsqr_list = []
-        Rsqr_regPara = {}
-        print(self.xt)
-        # print(data_add)
-
+    def ridge(self, dataset_add, feature_colm, label_colm, relation_list, relation,userId):
         try:
             dataset = spark.read.csv(dataset_add,header=True, inferSchema=True)
             dataset.show()
+            Rsqr_list = []
+            Rsqr_regPara = {}
+            print(self.xt)
+            # print(data_add)
             # data = spark.read.csv('/home/fidel/mltest/BI.csv', header=True, inferSchema=True)
             # data.show()
             # f_data = data.select('Sub Total', 'Tax Amount', 'Freight', 'Profit')

@@ -4,200 +4,151 @@ from pyspark.ml.feature import StringIndexer
 from pyspark.ml.feature import VectorIndexer, VectorAssembler
 from pyspark.sql import SparkSession
 
-# if __name__== "__main__":
+
+from PredictionAlgorithms.relationship import Relationship
+
 spark = SparkSession.builder.appName("predictive analysis").master("local[*]").getOrCreate()
 spark.sparkContext.setLogLevel("ERROR")
 
-
-
-dataset_add = "/home/fidel/mltest/bank.csv"
-features = ['balance', 'day', 'duration', 'campaign','age','job', 'marital', 'education', 'default', 'housing', 'loan', 'contact', 'poutcome']
-# features = ['age', 'balance', 'day', 'duration', 'campaign']
-label = ["y"]
-
-def randomClassifier(dataset_add, feature_colm, label_colm):
+def randomClassifier(dataset_add, feature_colm, label_colm,relation_list, relation):
     try:
         dataset = spark.read.parquet(dataset_add)
-
-        dataset.show()
-
         label = ''
         for y in label_colm:
             label = y
 
-        print(label)
-
-
-        # extracting the schema
-
-        val = dataset.schema
-
-        string_features = []
-        integer_features = []
-
-        for x in val:
+        Schema = dataset.schema
+        stringFeatures = []
+        numericalFeatures = []
+        for x in Schema:
             if (str(x.dataType) == "StringType" ):
                 for y in feature_colm:
                     if x.name == y:
-                        string_features.append(x.name)
+                        stringFeatures.append(x.name)
             else:
                 for y in feature_colm:
                     if x.name == y:
-                        integer_features.append(x.name)
+                        numericalFeatures.append(x.name)
 
-        print(string_features)
-        print(integer_features)
-        print(val)
+        summaryList = ['mean', 'stddev', 'min', 'max']
+        summaryDict = {}
+
+        import pyspark.sql.functions as F
+        import builtins
+        round = getattr(builtins, 'round')
+        for colm in numericalFeatures:
+            summaryListTemp = []
+            for value in summaryList:
+                summ = list(dataset.select(colm).summary(value).toPandas()[colm])
+                summaryListSubTemp = []
+                for val in summ:
+                    summaryListSubTemp.append(round(float(val), 4))
+                # print(summaryListSubTemp)
+                summaryListTemp.append(summaryListSubTemp)
+            # varianceListTemp = list(dataset.select(variance(col(colm)).alias(colm)).toPandas()[colm])
+            # summaryListTemp.append(varianceListTemp)
+            summaryDict[colm] = summaryListTemp
+        # summaryList.append('variance')
+        summaryDict['summaryName'] = summaryList
+        summaryDict['categoricalColumn'] = stringFeatures
+        skewnessList = []
+        kurtosisList = []
+        varianceList = []
+        skewKurtVarDict = {}
+        for colm in numericalFeatures:
+            skewness = (dataset.select(F.skewness(dataset[colm])).toPandas())
+            for i, row in skewness.iterrows():
+                for j, column in row.iteritems():
+                    skewnessList.append(round(column, 4))
+            kurtosis = (dataset.select(F.kurtosis(dataset[colm])).toPandas())
+            for i, row in kurtosis.iterrows():
+                for j, column in row.iteritems():
+                    kurtosisList.append(round(column, 4))
+            variance = (dataset.select(F.variance(dataset[colm])).toPandas())
+            for i, row in variance.iterrows():
+                for j, column in row.iteritems():
+                    varianceList.append(round(column, 4))
+
+        for skew, kurt, var, colm in zip(skewnessList, kurtosisList, varianceList, numericalFeatures):
+            print(skew, kurt, var)
+            skewKurtVarList = []
+            skewKurtVarList.append(skew)
+            skewKurtVarList.append(kurt)
+            skewKurtVarList.append(var)
+            skewKurtVarDict[colm] = skewKurtVarList
 
 
+        for (keyOne, valueOne), (keyTwo, valueTwo) in zip(summaryDict.items(), skewKurtVarDict.items()):
+            print(keyOne, valueOne, keyTwo, valueTwo)
+            if keyOne == keyTwo:
+                valueOne.extend(valueTwo)
+                summaryDict[keyOne] = valueOne
+        print(summaryDict)
+        print(summaryList.extend(['skewness', 'kurtosis', 'variance']))
+        print(summaryDict)
+        # for colm in numericalFeatures:
+        #     skewness = (dataset.select(F.skewness(dataset[colm])).alias('skewness_' + colm))
+        #     kurtosis = (dataset.select(F.kurtosis(dataset[colm])).alias('kurtosis_' + colm))
+        #     variance = (dataset.select(F.variance(dataset[colm]).alias('kurtosis_' + colm)))
+        if relation == 'linear':
+            dataset = dataset
+        if relation == 'non_linear':
+            dataset = Relationship(dataset, relation_list)
 
-
-
-
-
-
-
-        label_indexer = StringIndexer(inputCol=label, outputCol='indexed_'+label).fit(dataset)
-        dataset = label_indexer.transform(dataset)
-
-
-        ###########################################################################
+        dataset.show()
+        for x in Schema:
+            if (str(x.dataType) == "StringType" and x.name == label):
+                for labelkey in label_colm:
+                    label_indexer = StringIndexer(inputCol=label, outputCol='indexed_' + label).fit(dataset)
+                    dataset = label_indexer.transform(dataset)
+                    label = 'indexed_' + label
+            else:
+                label = label
         indexed_features = []
-        encoded_features = []
-        for col in string_features:
-            indexer = StringIndexer(inputCol=col, outputCol='indexed_' + col).fit(dataset)
-            indexed_features.append('indexed_'+col)
+        for colm in stringFeatures:
+            indexer = StringIndexer(inputCol=colm, outputCol='indexed_' + colm).fit(dataset)
+            indexed_features.append('indexed_'+colm)
             dataset = indexer.transform(dataset)
-            # dataset.show()
-            # encoder = OneHotEncoderEstimator(inputCols=['indexed_'+col], outputCols=['encoded_'+col]).fit(dataset)
-            # encoded_features.append('encoded_'+col)
-            # dataset = encoder.transform(dataset)
-            # dataset.show()
-
-        print(indexed_features)
-        print(encoded_features)
-
-        dataset_chi = dataset
-
-        # combining both the features colm together
-
-        final_features = integer_features + indexed_features
-
-        print(final_features)
-
-
-
-        # now using the vector assembler
-
+        final_features = numericalFeatures + indexed_features
+        response_chi_test = chi_square_test(dataset=dataset, features= indexed_features, label_col=label, stringFeatures = stringFeatures)
 
         featureassembler = VectorAssembler(
             inputCols=final_features,
             outputCol="features")
-
         dataset = featureassembler.transform(dataset)
         dataset.show()
-
-        # output.show()
-        # output.select("features").show()
-
-        # output_features = dataset.select("features")
-
-
-
-        #using the vector indexer
-
         vec_indexer = VectorIndexer(inputCol='features', outputCol='vec_indexed_features', maxCategories=4).fit(dataset)
-
         categorical_features = vec_indexer.categoryMaps
-        print("Chose %d categorical features: %s" %
+        print("Choose %d categorical features: %s" %
                     (len(categorical_features), ", ".join(str(k) for k in categorical_features.keys())))
-
         vec_indexed = vec_indexer.transform(dataset)
         vec_indexed.show()
-
-
-        # preparing the finalized data
-
-        finalized_data = vec_indexed.select('indexed_'+label, 'vec_indexed_features')
-        finalized_data.show()
-
-
-
-
-
-        # calling the chi-square test function
-
-        response_chi_test = chi_square_test(dataset=dataset_chi, features= indexed_features, label_col='indexed_'+label)
-
-
-        print(response_chi_test)
-
-
-        # renaming the colm
-        # print (label)
-        # dataset.withColumnRenamed(label,"label")
-        # print (label)
-        # dataset.show()
-
-        # f = ""
-        # f = label + " ~ "
-        #
-        # for x in features:
-        #     f = f + x + "+"
-        # f = f[:-1]
-        # f = (f)
-        #
-        # formula = RFormula(formula=f,
-        #                    featuresCol="features",
-        #                    labelCol="label")
-        #
-        # output = formula.fit(dataset).transform(dataset)
-        #
-        # output_2 = output.select("features", "label")
-        #
-        # output_2.show()
-        #
-        #
-        #
-        # splitting the dataset into taining and testing
-
+        finalized_data = vec_indexed.select(label, 'vec_indexed_features')
         train_data, test_data = finalized_data.randomSplit([0.75, 0.25], seed=40)
-
-
-        rf=RandomForestClassifier(labelCol='indexed_'+label,featuresCol='vec_indexed_features',numTrees=10)
-
-        # Convert indexed labels back to original labels.
-
-        # Train model.  This also runs the indexers.
+        rf=RandomForestClassifier(labelCol=label,featuresCol='vec_indexed_features',numTrees=10)
         model = rf.fit(train_data)
-
-        # Make predictions.
         predictions = model.transform(test_data)
+        print(model.featureImportances)
+        feature_importance = model.featureImportances.toArray().tolist()
+        print(feature_importance)
+        import pyspark.sql.functions as F
+        import builtins
+        round = getattr(builtins, 'round')
+        feature_importance = model.featureImportances.toArray().tolist()
+        print(feature_importance)
+        # feature_importance = [round(x,4) for x in feature_importance]
+        featureImportance = []
+        for x in feature_importance:
+            featureImportance.append(round(x, 4))
+        print(featureImportance)
 
-        # Select example rows to display.
-        # predictions.select("prediction", "label", "features").show(10)
-
-        print('features_importance:-\n', model.featureImportances)
-
-
-
-        # Select (prediction, true label) and compute test error
-        # evaluator = MulticlassClassificationEvaluator(
-        #     labelCol="label", predictionCol="prediction", metricName="accuracy")
-        # accuracy = evaluator.evaluate(predictions)
-        # print("Test Error = %g" % (1.0 - accuracy))
-
-        # rfModel = model.stages[2]
-        # print(rfModel)  # summary only
-
-
-
-
-
-
+        features_column_for_user = numericalFeatures + stringFeatures
+        feature_imp = { 'feature_importance': featureImportance,"feature_column" : features_column_for_user}
+        response_dict = {
+            'feature_importance': feature_imp,
+            'ChiSquareTestData': response_chi_test,
+            'summaryDict' : summaryDict
+        }
+        return response_dict
     except Exception as e :
         print("exception is  = " + str(e))
-#
-# if __name__== "__main__":
-#     randomClassifier(dataset_add, features, label)
-#

@@ -2,6 +2,9 @@ from pyspark.ml.regression import GBTRegressor
 from pyspark.ml.evaluation import RegressionEvaluator
 from pyspark.ml.feature import VectorAssembler, StringIndexer, VectorIndexer
 from pyspark.sql import SparkSession
+from pyspark.sql.types import *
+import json
+
 
 from PredictionAlgorithms.relationship import Relationship
 
@@ -25,9 +28,11 @@ class GradientBoostRegression():
         try:
             dataset = spark.read.csv(dataset_add, header=True, inferSchema=True)
             dataset.show()
+            stepSize=self.learningRate
             label = ''
             for val in label_colm:
                 label = val
+            #ETL part
             Schema = dataset.schema
             stringFeatures = []
             numericalFeatures = []
@@ -43,35 +48,55 @@ class GradientBoostRegression():
                         if x.name == y:
                             numericalFeatures.append(x.name)
 
-            print(stringFeatures, numericalFeatures)
-            dataset.printSchema()
+            if relation == 'linear':
+                dataset = dataset
+            if relation == 'non_linear':
+                dataset = Relationship(dataset, relation_list)
 
+
+            categoryColmList = []
+            categoryColmListFinal = []
+            categoryColmListDict = {}
+            countOfCategoricalColmList = []
+            for value in stringFeatures:
+                categoryColm = value
+                listValue = value
+                listValue = []
+                categoryColm = dataset.groupby(value).count()
+                countOfCategoricalColmList.append(categoryColm.count())
+                categoryColmJson = categoryColm.toJSON()
+                for row in categoryColmJson.collect():
+                    categoryColmSummary = json.loads(row)
+                    listValue.append(categoryColmSummary)
+                categoryColmListDict[value] = listValue
+
+            if not stringFeatures:
+                maxCategories = 5
+            else:
+                maxCategories = max(countOfCategoricalColmList)
             for x in Schema:
                 if (str(x.dataType) == "StringType" and x.name == label):
                     for labelkey in label_colm:
-                        label_indexer = StringIndexer(inputCol=label, outputCol='indexed_' + label).fit(dataset)
+                        label_indexer = StringIndexer(inputCol=label, outputCol='indexed_' + label, handleInvalid="skip").fit(dataset)
                         dataset = label_indexer.transform(dataset)
                         label = 'indexed_' + label
                 else:
                     label = label
             indexed_features = []
-            encodedFeatures = []
             for colm in stringFeatures:
-                indexer = StringIndexer(inputCol=colm, outputCol='indexed_' + colm).fit(dataset)
+                indexer = StringIndexer(inputCol=colm, outputCol='indexed_' + colm, handleInvalid="skip").fit(dataset)
                 indexed_features.append('indexed_' + colm)
                 dataset = indexer.transform(dataset)
-            featureAssembler = VectorAssembler(inputCols=indexed_features + numericalFeatures, outputCol='features')
+            featureAssembler = VectorAssembler(inputCols=indexed_features + numericalFeatures, outputCol='features', handleInvalid="skip")
             dataset = featureAssembler.transform(dataset)
-            vectorIndexer = VectorIndexer(inputCol='features', outputCol='vectorIndexedFeatures', maxCategories=4).fit(
-                dataset)
+            vectorIndexer = VectorIndexer(inputCol='features', outputCol='vectorIndexedFeatures', maxCategories=maxCategories, handleInvalid="skip").fit(dataset)
             dataset = vectorIndexer.transform(dataset)
             trainDataRatioTransformed = self.trainDataRatio
             testDataRatio = 1 - trainDataRatioTransformed
-            trainingData, testData = dataset.randomSplit([trainDataRatioTransformed, testDataRatio], seed=0)
-            stepSize = self.learningRate
+            trainingData, testData = dataset.randomSplit([trainDataRatioTransformed, testDataRatio], seed=40)
 
-            gradientBoostingmodel = GBTRegressor(labelCol=label, featuresCol='vectorIndexedFeatures', maxIter=10,
-                                                 stepSize=stepSize)
+
+            gradientBoostingmodel = GBTRegressor(labelCol=label, featuresCol='vectorIndexedFeatures', maxIter=10,stepSize=stepSize)
             gradientBoostFittingTrainingData = gradientBoostingmodel.fit(trainingData)
             gBPredictionTrainData = gradientBoostFittingTrainingData.transform(trainingData)
             gBPredictionTestData = gradientBoostFittingTrainingData.transform(testData)
@@ -128,4 +153,3 @@ class GradientBoostRegression():
 
         except Exception as e:
             print('exception is --', e)
-            stepSize=self.learningRate

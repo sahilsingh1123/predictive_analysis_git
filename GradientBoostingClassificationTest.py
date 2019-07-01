@@ -5,6 +5,8 @@ from pyspark.ml.evaluation import MulticlassClassificationEvaluator
 from pyspark.ml.feature import VectorAssembler, StringIndexer, VectorIndexer
 from pyspark.sql import SparkSession
 from pyspark.sql.types import *
+import json
+
 
 from PredictionAlgorithms.relationship import Relationship
 
@@ -32,13 +34,16 @@ class GradientBoostClassification():
             label = ''
             for val in label_colm:
                 label = val
+            #ETL part
             Schema = dataset.schema
             stringFeatures = []
             numericalFeatures = []
             for x in Schema:
-                if (str(x.dataType) == "StringType"):
+                if (str(x.dataType) == "StringType" or str(x.dataType) == 'TimestampType' or str(
+                        x.dataType) == 'DateType' or str(x.dataType) == 'BooleanType' or str(x.dataType) == 'BinaryType'):
                     for y in feature_colm:
                         if x.name == y:
+                            dataset = dataset.withColumn(y, dataset[y].cast(StringType()))
                             stringFeatures.append(x.name)
                 else:
                     for y in feature_colm:
@@ -46,10 +51,31 @@ class GradientBoostClassification():
                             numericalFeatures.append(x.name)
 
             if relation == 'linear':
-                print('linear relationship')
+                dataset = dataset
             if relation == 'non_linear':
                 dataset = Relationship(dataset, relation_list)
-            dataset.show()
+
+
+            categoryColmList = []
+            categoryColmListFinal = []
+            categoryColmListDict = {}
+            countOfCategoricalColmList = []
+            for value in stringFeatures:
+                categoryColm = value
+                listValue = value
+                listValue = []
+                categoryColm = dataset.groupby(value).count()
+                countOfCategoricalColmList.append(categoryColm.count())
+                categoryColmJson = categoryColm.toJSON()
+                for row in categoryColmJson.collect():
+                    categoryColmSummary = json.loads(row)
+                    listValue.append(categoryColmSummary)
+                categoryColmListDict[value] = listValue
+
+            if not stringFeatures:
+                maxCategories = 5
+            else:
+                maxCategories = max(countOfCategoricalColmList)
             for x in Schema:
                 if (str(x.dataType) == "StringType" and x.name == label):
                     for labelkey in label_colm:
@@ -67,12 +93,12 @@ class GradientBoostClassification():
             featureassembler = VectorAssembler(inputCols=final_features,
                                                outputCol="features")
             dataset = featureassembler.transform(dataset)
-            vectorIndexer = VectorIndexer(inputCol='features', outputCol='vectorIndexedFeatures', maxCategories=4).fit(dataset)
+            vectorIndexer = VectorIndexer(inputCol='features', outputCol='vectorIndexedFeatures', maxCategories=maxCategories).fit(dataset)
             dataset = vectorIndexer.transform(dataset)
             trainDataRatioTransformed = self.trainDataRatio
             testDataRatio = 1 - trainDataRatioTransformed
             trainingData, testData = dataset.randomSplit([trainDataRatioTransformed, testDataRatio], seed=0)
-            gradientBoostingmodel = GBTClassifier(labelCol=label, featuresCol='vectorIndexedFeatures', maxIter=10, stepSize=stepSize)
+            gradientBoostingmodel = GBTClassifier(labelCol=label, featuresCol='vectorIndexedFeatures', maxIter=10,stepSize=stepSize)
             gradientBoostFittingTrainingData = gradientBoostingmodel.fit(trainingData)
             gBPredictionTrainData = gradientBoostFittingTrainingData.transform(trainingData)
             gBPredictionTestData = gradientBoostFittingTrainingData.transform(testData)

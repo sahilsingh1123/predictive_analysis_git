@@ -1,69 +1,106 @@
+import json
+
 import pyspark.sql.functions as f
-from pyspark.ml.feature import VectorAssembler
+from pyspark.ml.feature import VectorAssembler, StringIndexer, VectorIndexer
 from pyspark.ml.regression import LinearRegression
 from pyspark.sql import SparkSession
 from pyspark.sql.types import *
 
 from PredictionAlgorithms.relationship import Relationship
 
-# from pyspark.sql.functions import max as _max
-# from pyspark.sql.functions import abs
-
-#
-# os.environ['PYSPARK_SUBMIT_ARGS'] = '--jars /home/fidel/software/spark-2.4.0-bin-hadoop2.7/jars/xgboost4j-spark-0.72.jar,/home/fidel/software/spark-2.4.0-bin-hadoop2.7/jars/xgboost4j-0.72.jar pyspark-shell'
-#
-
-
 spark = SparkSession.builder.appName("predictive_Analysis").master("local[*]").getOrCreate()
-# spark.sparkContext.addPyFile('/home/fidel/Downloads/sparkxgb.zip')
 spark.sparkContext.setLogLevel("ERROR")
 
 
-# spark.sparkContext.addPyFile('/home/fidel/Downloads/xgboost4j-0.72.jar')
-# spark.sparkContext.addPyFile('/home/fidel/Downloads/xgboost4j-spark-0.72.jar')
 
 
-class Ridge_reg():
-    def __init__(self, xt=[0.0, 0.01, 0.05, 0.1, 0.5, 1.0, 0.005, 0.8, 0.3]):
+class RidgeRegressionModel():
+    def __init__(self, xt=[0.0, 0.01, 0.05, 0.1, 0.5, 1.0, 0.005, 0.8, 0.3], trainDataRatio=0.80):
         self.xt = xt
+        self.trainDataRatio = trainDataRatio
 
-    def ridge(self, dataset_add, feature_colm, label_colm, relation_list, relation):
 
-        Rsqr_list = []
-        Rsqr_regPara = {}
-        print(self.xt)
-        # print(data_add)
-
+    def ridgeRegression(self, dataset_add, feature_colm, label_colm, relation_list, relation,userId):
         try:
             dataset = spark.read.parquet(dataset_add)
             dataset.show()
+            Rsqr_list = []
+            Rsqr_regPara = {}
+            print(self.xt)
+            # print(data_add)
 
             label = ''
-            for y in label_colm:
-                label = y
+            for val in label_colm:
+                label = val
+            #ETL part
+            Schema = dataset.schema
+            stringFeatures = []
+            numericalFeatures = []
+            for x in Schema:
+                if (str(x.dataType) == "StringType" or str(x.dataType) == 'TimestampType' or str(
+                        x.dataType) == 'DateType' or str(x.dataType) == 'BooleanType' or str(x.dataType) == 'BinaryType'):
+                    for y in feature_colm:
+                        if x.name == y:
+                            dataset = dataset.withColumn(y, dataset[y].cast(StringType()))
+                            stringFeatures.append(x.name)
+                else:
+                    for y in feature_colm:
+                        if x.name == y:
+                            numericalFeatures.append(x.name)
 
-            print(label)
-            if relation=='linear':
-                print('linear relationship')
-            if relation=='non_linear':
+            if relation == 'linear':
+                dataset = dataset
+            if relation == 'non_linear':
                 dataset = Relationship(dataset, relation_list)
-            dataset.show()
-            featureassembler = VectorAssembler(inputCols=feature_colm,
-                                               outputCol="Independent_features")
-            output = featureassembler.transform(dataset)
-            output.show()
-            output.select("Independent_features").show()
-            finalized_data = output.select("Independent_features", label)
-            finalized_data.show()
 
-            # splitting the dataset into taining and testing
 
-            train_data, test_data = finalized_data.randomSplit([0.75, 0.25], seed=40)
+            categoryColmList = []
+            categoryColmListFinal = []
+            categoryColmListDict = {}
+            countOfCategoricalColmList = []
+            for value in stringFeatures:
+                categoryColm = value
+                listValue = value
+                listValue = []
+                categoryColm = dataset.groupby(value).count()
+                countOfCategoricalColmList.append(categoryColm.count())
+                categoryColmJson = categoryColm.toJSON()
+                for row in categoryColmJson.collect():
+                    categoryColmSummary = json.loads(row)
+                    listValue.append(categoryColmSummary)
+                categoryColmListDict[value] = listValue
+
+            if not stringFeatures:
+                maxCategories = 5
+            else:
+                maxCategories = max(countOfCategoricalColmList)
+            for x in Schema:
+                if (str(x.dataType) == "StringType" and x.name == label):
+                    for labelkey in label_colm:
+                        label_indexer = StringIndexer(inputCol=label, outputCol='indexed_' + label, handleInvalid="skip").fit(dataset)
+                        dataset = label_indexer.transform(dataset)
+                        label = 'indexed_' + label
+                else:
+                    label = label
+            indexed_features = []
+            encodedFeatures = []
+            for colm in stringFeatures:
+                indexer = StringIndexer(inputCol=colm, outputCol='indexed_' + colm, handleInvalid="skip").fit(dataset)
+                indexed_features.append('indexed_' + colm)
+                dataset = indexer.transform(dataset)
+            featureAssembler = VectorAssembler(inputCols=indexed_features + numericalFeatures, outputCol='features', handleInvalid="skip")
+            dataset = featureAssembler.transform(dataset)
+            vectorIndexer = VectorIndexer(inputCol='features', outputCol='vectorIndexedFeatures', maxCategories=maxCategories, handleInvalid="skip").fit(
+                dataset)
+            dataset = vectorIndexer.transform(dataset)
+            trainDataRatioTransformed = self.trainDataRatio
+            testDataRatio = 1 - trainDataRatioTransformed
+            train_data, test_data = dataset.randomSplit([trainDataRatioTransformed, testDataRatio], seed=40)
 
             ######################################################################33
 
             for t in self.xt:
-                lr1 = LinearRegression(featuresCol="Independent_features", labelCol=label, elasticNetParam=0,
+                lr1 = LinearRegression(featuresCol="vectorIndexedFeatures", labelCol=label, elasticNetParam=0,
                                        regParam=t)
                 regressor1 = lr1.fit(train_data)
                 print(t)
@@ -86,7 +123,7 @@ class Ridge_reg():
                     final_regPara.append(val)
 
             for reg in final_regPara:
-                lr_lasso = LinearRegression(featuresCol="Independent_features", labelCol=label, elasticNetParam=0,
+                lr_lasso = LinearRegression(featuresCol="vectorIndexedFeatures", labelCol=label, elasticNetParam=0,
                                             regParam=reg)
                 regressor = lr_lasso.fit(train_data)
                 training_summary = regressor.summary
@@ -95,11 +132,9 @@ class Ridge_reg():
 
             print("coefficient : " + str(regressor.coefficients))
             coefficient_t = str(regressor.coefficients)
-
             print("intercept : " + str(regressor.intercept))
             intercept_t = str(regressor.intercept)
             prediction = regressor.evaluate(test_data)
-
             prediction_val = prediction.predictions
             prediction_val.show()
             prediction_val_pand = prediction_val.select(label, "prediction").toPandas()
@@ -137,12 +172,47 @@ class Ridge_reg():
             tValuesList = training_summary.tValues
             print(" p values :\n" + str(training_summary.pValues))
             P_values = str(training_summary.pValues)
+            coefficientList = list(regressor.coefficients)
+
+            #summaryData
+            import pyspark.sql.functions as F
+            import builtins
+            round = getattr(builtins, 'round')
+            print(coefficientList)
+            coefficientListRounded = []
+            for value in coefficientList:
+                coefficientListRounded.append(round(value, 4))
+            # print(coefficientListRounded)
+            # print(intercept_t)
+            interceptRounded = round(float(intercept_t), 4)
+            # print(interceptRounded)
+            # print(RMSE)
+            RMSERounded = round(RMSE, 4)
+            # print(RMSERounded)
+            MSERounded = round(MSE, 4)
+            rSquareRounded = round(r_square, 4)
+            adjustedrSquareRounded = round(adjsted_r_square, 4)
+            coefficientStdError = training_summary.coefficientStandardErrors
+            coefficientStdErrorRounded = []
+            for value in coefficientStdError:
+                coefficientStdErrorRounded.append(round(float(value), 4))
+            print(coefficientStdErrorRounded)
+            tValuesListRounded = []
+            for value in tValuesList:
+                tValuesListRounded.append(round(value, 4))
+            print(tValuesListRounded)
+            pValuesListRounded = []
+            PValuesList = training_summary.pValues
+
+            for value in PValuesList:
+                pValuesListRounded.append(round(value, 4))
+            print(pValuesListRounded)
 
             # regression equation
             intercept_t = float(intercept_t)
             coefficientList = list(regressor.coefficients)
-            equation = label, '=', intercept_t, '+'
-            for feature, coeff in zip(feature_colm, coefficientList):
+            equation = label, '=', interceptRounded, '+'
+            for feature, coeff in zip(feature_colm, coefficientListRounded):
                 coeffFeature = coeff, '*', feature, '+'
                 equation += coeffFeature
             equation = equation[:-1]
@@ -154,7 +224,7 @@ class Ridge_reg():
             PValuesList = training_summary.pValues
             significanceObject = {}
 
-            for pValue in PValuesList:
+            for pValue in pValuesListRounded:
                 if (0 <= pValue < 0.001):
                     significanceObject[pValue] = '***'
                 if (0.001 <= pValue < 0.01):
@@ -166,6 +236,7 @@ class Ridge_reg():
                 if (0.1 <= pValue < 1):
                     significanceObject[pValue] = '-'
             print(significanceObject)
+
 
             # residual  vs predicted value
 
@@ -180,6 +251,14 @@ class Ridge_reg():
 
             pred_residuals = pred_d.join(res_d, on=['row_index']).sort('row_index').drop('row_index')
             pred_residuals.show()
+
+            QQPlot = 'QQPlot.parquet'
+            locationAddress = 'hdfs://10.171.0.181:9000/dev/dmxdeepinsight/datasets/'
+
+            # userId = '6786103f-b49b-42f2-ba40-aa8168b65e67'
+
+            QQPlotAddress = locationAddress + userId + QQPlot
+            pred_residuals.write.parquet(QQPlotAddress, mode='overwrite')
 
             # pred_residuals.write.parquet('hdfs://10.171.0.181:9000/dev/dmxdeepinsight/datasets/Q_Q_PLOT.parquet',
             #                              mode='overwrite')
@@ -207,10 +286,68 @@ class Ridge_reg():
                                             sqrt(ab(std_resid["std_res"])).alias("sqrt_std_resid"))
             sqrt_std_res.show()
             sqrt_std_res_fitted = sqrt_std_res.select('prediction', 'sqrt_std_resid')
-            sqrt_std_res_fitted.write.parquet(
-                'hdfs://10.171.0.181:9000/dev/dmxdeepinsight/datasets/scale_location_train.parquet',
-                mode='overwrite')
 
+            scaleLocationPlot = 'scaleLocation.parquet'
+
+            scaleLocationPlotAddress = locationAddress + userId + scaleLocationPlot
+            sqrt_std_res_fitted.write.parquet(scaleLocationPlotAddress, mode='overwrite')
+
+            # sqrt_std_res_fitted.write.parquet(
+            #     'hdfs://10.171.0.181:9000/dev/dmxdeepinsight/datasets/scale_location_train.parquet',
+            #     mode='overwrite')
+            ###########
+            #QQplot
+            # QUANTILE
+
+            from scipy.stats import norm
+            import statistics
+            import math
+
+            res_d.show()
+            sorted_res = res_d.sort('residuals')
+            sorted_res.show()
+            # stdev_ress = sorted_res.select(stdDev(col('residuals')).alias('std_dev'),
+            #                                meann(col('residuals')).alias('mean'))
+            # stdev_ress.show()
+            # mean_residual = stdev_ress.select(['mean']).toPandas()
+            # l = mean_residual.values.tolist()
+            # print(l)
+            # stddev_residual = stdev_ress.select(['std_dev']).toPandas()
+            # length of the sorted std residuals
+            count = sorted_res.groupBy().count().toPandas()
+            countList = count.values.tolist()
+            tuple1 = ()
+            for k in countList:
+                tuple1 = k
+            for tu in tuple1:
+                lengthResiduals = tu
+            print(lengthResiduals)
+            quantileList = []
+            for x in range(0, lengthResiduals):
+                quantileList.append((x - 0.5) / (lengthResiduals))
+
+            print(quantileList)
+
+            # Z-score on theoritical quantile
+
+            zTheoriticalTrain = []
+            for x in quantileList:
+                zTheoriticalTrain.append(norm.ppf(abs(x)))
+            print(zTheoriticalTrain)
+
+            sortedResidualPDF = sorted_res.select('residuals').toPandas()
+            sortedResidualPDF = sortedResidualPDF['residuals']
+            stdevResidualTrain = statistics.stdev(sortedResidualPDF)
+            meanResidualTrain = statistics.mean(sortedResidualPDF)
+
+            zPracticalTrain = []
+            for x in sortedResidualPDF:
+                zPracticalTrain.append((x - meanResidualTrain) / stdevResidualTrain)
+
+
+
+
+            ##########
             target = dataset.select(label)
             pred = prediction_data.select(['prediction'])
             pred_d = pred.withColumn('row_index', f.monotonically_increasing_id())
@@ -224,19 +361,22 @@ class Ridge_reg():
             pred_target_data_update = dataset.join(pred_target, on=[label])
 
             pred_target_data_update.show(100)
-            table_response = {
 
-                "Intercept": intercept_t,
-                "Coefficients": coefficient_t,
-                "RMSE": RMSE,
-                "MSE": MSE,
-                "R_square": r_square,
-                "Adj_R_square": adjsted_r_square,
-                "coefficientStdError": coefficientStdError,
-                "T_value": T_values,
-                "P_value": P_values
 
-            }
+            ##########3
+            # table_response = {
+            #
+            #     "Intercept": intercept_t,
+            #     "Coefficients": coefficient_t,
+            #     "RMSE": RMSE,
+            #     "MSE": MSE,
+            #     "R_square": r_square,
+            #     "Adj_R_square": adjsted_r_square,
+            #     "coefficientStdError": coefficientStdError,
+            #     "T_value": T_values,
+            #     "P_value": P_values
+            #
+            # }
             y = 0.1
             x = []
 
@@ -260,7 +400,6 @@ class Ridge_reg():
             for i in range(0, len(prediction_val_pand_residual)):
                 fitted_residual += str(prediction_val_pand_predict[i]) + 't' + str(prediction_val_pand_residual[i]) + 'n'
             ## scale location graph data
-            import math
 
             prediction_val_pand_residual
             prediction_val_pand_predict
@@ -344,23 +483,22 @@ class Ridge_reg():
 
             tableContent = \
                 {
-                    'coefficientValuesKey': coefficientList,
-                    'tValuesKey': tValuesList,
-                    'pValuesKey': PValuesList,
+                    'coefficientValuesKey': coefficientListRounded,
+                    'tValuesKey': tValuesListRounded,
+                    'pValuesKey': pValuesListRounded,
                     'significanceValuesKey': significanceObject,
-                    'interceptValuesKey': intercept_t,
-                    "RMSE": RMSE,
-                    "RSquare": r_square,
-                    "AdjRSquare": adjsted_r_square,
-                    "CoefficientStdError": coefficientStdError,
-                    'equationKey' : equation
+                    'interceptValuesKey': interceptRounded,
+                    "RMSE": RMSERounded,
+                    "RSquare": rSquareRounded,
+                    "AdjRSquare": adjustedrSquareRounded,
+                    "CoefficientStdError": coefficientStdErrorRounded,
+                    'equationKey': equation
                 }
-            print(tableContent)
 
             json_response = {
 
-                'table_data': table_response,
-                'graph_data': graph_response
+                'table_data': tableContent,
+                'graph_data' : graph_response
 
 
             }

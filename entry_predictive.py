@@ -43,7 +43,7 @@ from PredictionAlgorithms.LoadModel import  loadModel
 # feature_colm = ['balance', 'day', 'duration', 'campaign','age','job', 'marital', 'education', 'default', 'housing', 'loan', 'contact', 'poutcome']
 # # features = ['age', 'balance', 'day', 'duration', 'campaign']
 # label_colm = ["y"]
-# algorithm = "Gradient_Boosting_regression"
+# algorithm = "linear_reg"
 # relation = 'linear'
 # relation_list = {}
 # trainData = [0.80]
@@ -59,14 +59,16 @@ relation_list = {}
 trainData = [0.80]
 modelUUID = '6786103f-b49b-42f2-ba40-aa8168b65e67'
 
-# # large dataset
+# large dataset
 # dataset_add= '/home/fidel/mltest/auto-miles-per-gallon.csv'
 # feature_colm= ["CYLINDERS", "WEIGHT" , "HORSEPOWER","ACCELERATION", "DISPLACEMENT", "MODELYEAR"]
 # label_colm=["MPG"]
 # relation_list={}
-# relation= 'linear_reg'
-# algorithm='ridge_reg'
+# relation= 'linear'
+# algorithm='linear_reg'
 # xt=[0.5]
+# trainData = [0.80]
+# modelUUID = '6786103f-b49b-42f2-ba40-aa8168b65e67'
 
 
 #

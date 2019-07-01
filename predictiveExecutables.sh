@@ -1,0 +1,1 @@
+pyinstaller --clean --hidden-import=tkinter --hidden-import=scipy --hidden-import=cython --hidden-import=matplotlib --additional-hooks-dir=. entryFlaskUpdated.py Forecasting.py FPGrowth.py LassoRegression.py GradientBoostingClassificationTest.py GradientBoostingRegressionTest.py LinearRegression.py RandomForestClassifier.py RidgeRegression.py SentimentAnalysis.py
