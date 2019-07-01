@@ -1,0 +1,2 @@
+pyinstaller --hidden-import=distutils --hidden-import=pyspark  --clean --additional-hooks-dir= entryFlask.py LinearRegression.py chi_sqr_importance.py GradientBoostingClassificationTest.py GradientBoostingRegressionTest.py Lasso_regression.py logistic_regression_original.py pearson_corr_original.py RandomForestRegressor.py relationship.py
+cp -R libPackage/pyspark dist/entryFlask/ libPackage/py4j dist/entryFlask/
