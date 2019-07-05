@@ -1,19 +1,18 @@
 import json
-
-from ml_server_components import SentimentAnalysis
-from ml_server_components import KMeans
-from ml_server_components import Forecasting
+from flask import Flask
+from flask import Response
+from flask import jsonify
+from flask import request
 from ml_server_components import FPGrowth
+from ml_server_components import Forecasting
+from ml_server_components import KMeans
+from ml_server_components import SentimentAnalysis
 
 import chi_sqr_original
 import linear_reg_original
 import pearson_corr_original
 import random_forest_classifier_test
 import random_forest_regression_test
-from flask import Flask
-from flask import Response
-from flask import jsonify
-from flask import request
 
 app = Flask(__name__)
 
@@ -95,12 +94,13 @@ def forcasting():
             forecastingAlgorithm = j['forecastingAlgorithm']
             if forecastingAlgorithm == 'arima':
                 arima_model_type= j['arima_model_type']
-                response_data = Forecasting.perform_forecasting(data=data, count=j['count'], len_type=j['len_type'], model_type=j['model_type'], trendType=j['trendType'], seasonType=j['seasonType'] , forecastAlgorithm= j['forecastingAlgorithm'] , P=j['P'],Q=j['Q'],D=j['D'], arima_model_type=arima_model_type)
+                response_data = Forecasting.perform_forecasting(data=data, count=j['count'], len_type=j['len_type'], model_type=j['model_type'], trendType=j['trendType'], seasonType=j['seasonType'] , forecastAlgorithm= j['forecastingAlgorithm'] , P=j['P'],Q=j['Q'],D=j['D'], arima_model_type=arima_model_type,iterations=j['iterations'])
             else:
-                response_data = Forecasting.perform_forecasting(data=data, count=j['count'], len_type=j['len_type'], model_type=j['model_type'], trendType=j['trendType'], seasonType=j['seasonType'] , forecastAlgorithm= j['forecastingAlgorithm'] , P=None,Q=None,D=None, arima_model_type=None)
+                response_data = Forecasting.perform_forecasting(data=data, count=j['count'], len_type=j['len_type'], model_type=j['model_type'], trendType=j['trendType'], seasonType=j['seasonType'] , forecastAlgorithm= j['forecastingAlgorithm'] , P=None,Q=None,D=None, arima_model_type=None,iterations=None)
     except Exception as e:
         print('exception = ' + str(e))
-        response_data = str(json.dumps({'run_status': 'sorry! unable to process your request'})).encode('utf-8')
+        #response_data = str(json.dumps({'run_status': 'sorry! unable to process your request'})).encode('utf-8')
+        response_data = {'run_status': 'sorry! unable to process your request'}
     status = '200 OK'
 
     return jsonify(success='success', message='ml_server_response', data=response_data)

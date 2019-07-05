@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import statsmodels.api as sm
 from statsmodels.tsa.arima_model import ARIMA
-from pyramid.arima import auto_arima
+from pmdarima import auto_arima
 from pandas.plotting import register_matplotlib_converters
 
 import numpy as np
@@ -41,7 +41,7 @@ class ArimaForecasting():
         modelAuto = auto_arima(indexedDataset,m=12,max_p=3,max_q=3 ,trace=True, error_action="ignore", suppress_warnings=True,seasonal=True,stepwise=True)
         # modelAutoFit = modelAuto.fit(indexedDataset.values)
         # forecasting
-        newDatesLength = 5
+        newDatesLength = 20
         modelAutoPredict,confint = modelAuto.predict(n_periods=newDatesLength,return_conf_int=True)
         indexOfFc = pd.date_range(indexedDataset.index[-1],periods=newDatesLength,freq="MS")
         # modelAutoPredict = pd.DataFrame(modelAutoPredict, index=indexedDataset.index, columns=["Prediction"])

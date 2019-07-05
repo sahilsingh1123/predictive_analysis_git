@@ -1,24 +1,27 @@
 import json
-from PredictionAlgorithms.ml_server_components import SentimentAnalysis
-from PredictionAlgorithms.ml_server_components import KMeans
-from PredictionAlgorithms.ml_server_components import Forecasting
-from PredictionAlgorithms.ml_server_components import FPGrowth
-from scipy import optimize
-import scipy
-import pyspark
-from PredictionAlgorithms import chi_sqr_original
+
 import matplotlib as mpl
+import py4j
+import pyspark
+import scipy
 from flask import Flask
 from flask import Response
 from flask import jsonify
 from flask import request
-import py4j
-from PredictionAlgorithms.LinearRegression import LinearRegressionModel
+from scipy import optimize
+
+from PredictionAlgorithms import chi_sqr_original
 from PredictionAlgorithms import pearson_corr_original
+from PredictionAlgorithms.LassoRegression import LassoRegressionModel
+from PredictionAlgorithms.LinearRegression import LinearRegressionModel
 from PredictionAlgorithms.RandomForestClassifier import RandomClassifierModel
 from PredictionAlgorithms.RandomForestRegressor import RandomRegressionModel
-from PredictionAlgorithms.LassoRegression import LassoRegressionModel
 from PredictionAlgorithms.RidgeRegression import RidgeRegressionModel
+from PredictionAlgorithms.ml_server_components import FPGrowth
+from PredictionAlgorithms.ml_server_components import Forecasting
+from PredictionAlgorithms.ml_server_components import KMeans
+from PredictionAlgorithms.ml_server_components import SentimentAnalysis
+
 mpl.use("TkAgg")
 import tkinter
 import sys
@@ -108,9 +111,9 @@ def forecasting():
             forecastingAlgorithm = j['forecastingAlgorithm']
             if forecastingAlgorithm == 'arima':
                 arima_model_type= j['arima_model_type']
-                response_data = Forecasting.ForecastingModel.perform_forecasting(data=data, count=j['count'], len_type=j['len_type'], model_type=j['model_type'], trendType=j['trendType'], seasonType=j['seasonType'] , forecastAlgorithm= j['forecastingAlgorithm'] , P=j['P'],Q=j['Q'],D=j['D'], arima_model_type=arima_model_type)
+                response_data = Forecasting.ForecastingModel.perform_forecasting(data=data, count=j['count'], len_type=j['len_type'], model_type=j['model_type'], trendType=j['trendType'], seasonType=j['seasonType'] , forecastAlgorithm= j['forecastingAlgorithm'] , P=j['P'],Q=j['Q'],D=j['D'], arima_model_type=arima_model_type,iterations=j['iterations'])
             else:
-                response_data = Forecasting.ForecastingModel.perform_forecasting(data=data, count=j['count'], len_type=j['len_type'], model_type=j['model_type'], trendType=j['trendType'], seasonType=j['seasonType'] , forecastAlgorithm= j['forecastingAlgorithm'] , P=None,Q=None,D=None, arima_model_type=None)
+                response_data = Forecasting.ForecastingModel.perform_forecasting(data=data, count=j['count'], len_type=j['len_type'], model_type=j['model_type'], trendType=j['trendType'], seasonType=j['seasonType'] , forecastAlgorithm= j['forecastingAlgorithm'] , P=None,Q=None,D=None, arima_model_type=None,iterations=None)
     except Exception as e:
         print('exception = ' + str(e))
         response_data = str(json.dumps({'run_status': 'sorry! unable to process your request'})).encode('utf-8')
