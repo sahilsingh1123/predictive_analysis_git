@@ -36,9 +36,11 @@ class LinearRegressionModel():
             stringFeatures = []
             numericalFeatures = []
             for x in Schema:
-                if (str(x.dataType) == "StringType"):
+                if (str(x.dataType) == "StringType" or str(x.dataType) == 'TimestampType' or str(
+                        x.dataType) == 'DateType' or str(x.dataType) == 'BooleanType' or str(x.dataType) == 'BinaryType'):
                     for y in feature_colm:
                         if x.name == y:
+                            dataset = dataset.withColumn(y, dataset[y].cast(StringType()))
                             stringFeatures.append(x.name)
                 else:
                     for y in feature_colm:
@@ -52,21 +54,19 @@ class LinearRegressionModel():
             for x in Schema:
                 if (str(x.dataType) == "StringType" and x.name == label):
                     for labelkey in label_colm:
-                        label_indexer = StringIndexer(inputCol=label, outputCol='indexed_' + label).fit(dataset)
+                        label_indexer = StringIndexer(inputCol=label, outputCol='indexed_' + label, handleInvalid="skip").fit(dataset)
                         dataset = label_indexer.transform(dataset)
                         label = 'indexed_' + label
                 else:
                     label = label
             indexed_features = []
             for colm in stringFeatures:
-                indexer = StringIndexer(inputCol=colm, outputCol='indexed_' + colm).fit(dataset)
+                indexer = StringIndexer(inputCol=colm, outputCol='indexed_' + colm, handleInvalid="skip").fit(dataset)
                 indexed_features.append('indexed_' + colm)
                 dataset = indexer.transform(dataset)
-            final_features = numericalFeatures + indexed_features
-            featureassembler = VectorAssembler(inputCols=final_features,
-                                               outputCol="features")
-            dataset = featureassembler.transform(dataset)
-            vectorIndexer = VectorIndexer(inputCol='features', outputCol='vectorIndexedFeatures', maxCategories=4).fit(
+            featureAssembler = VectorAssembler(inputCols=indexed_features + numericalFeatures, outputCol='features', handleInvalid="skip")
+            dataset = featureAssembler.transform(dataset)
+            vectorIndexer = VectorIndexer(inputCol='features', outputCol='vectorIndexedFeatures', maxCategories=4, handleInvalid="skip").fit(
                 dataset)
             dataset = vectorIndexer.transform(dataset)
 
@@ -326,6 +326,20 @@ class LinearRegressionModel():
             pred_target_data_update = dataset.join(pred_target, on=[label])
 
             pred_target_data_update.show(100)
+            '''
+            prediction = regressor.evaluate(dataset)
+            predictionTestData= prediction.predictions
+            predictionTestData.show()
+            #appending the predicted column into the dataset which is test dataset
+            predictionLabelList = [label,'prediction']
+            updatedFeatureColmList = feature_colm
+            for val in predictionLabelList:
+                updatedFeatureColmList.append(val)
+            print(updatedFeatureColmList)
+            predictionTestDatasetcolumn = predictionTestData.select(updatedFeatureColmList)
+            predictionTestDatasetcolumn.show()
+
+            '''
 
             ##########################################################################################
 

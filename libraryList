@@ -1,0 +1,17 @@
+#predictive
+pyspark
+flask
+json
+pandas
+scipy
+matplotlib
+
+
+#Forecasting
+pyramid
+nltk
+statsmodel
+dateutil
+numpy
+time
+sklearn

@@ -3,16 +3,13 @@ from pyspark.sql import SparkSession
 
 
 def Correlation_test_imp(dataset, features, label_col):
-    spark = SparkSession.builder.appName("predictive_analysis").master(
-        "spark://fidel-Latitude-E5570:7077").getOrCreate()
 
-    spark.sparkContext.setLogLevel("ERROR")
     label_col = [label_col]
 
     All_colms =  label_col + features
 
     featureassembler_correlation = VectorAssembler(
-        inputCols=All_colms, outputCol="correlation_colm")
+        inputCols=All_colms, outputCol="correlation_colm", handleInvalid="skip")
     output_corr = featureassembler_correlation.transform(dataset)
     output_corr.show()
 
@@ -56,7 +53,7 @@ def Correlation_test_imp(dataset, features, label_col):
     # print(" spearman correlation...: \n" + str(r1s[0]))
 
     result_pearson = {'pearson_value': pearson_value,
-                      'matrix': pearson_matrix}
+                      'matrix': pearsonMatrix}
     # print(json_response)
 
     return result_pearson

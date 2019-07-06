@@ -1,13 +1,23 @@
+import json
+
 import pyspark.sql.functions as f
-from pyspark.ml.feature import VectorAssembler
+from pyspark.ml.feature import VectorAssembler, StringIndexer, VectorIndexer
 from pyspark.ml.regression import LinearRegression
 from pyspark.sql import SparkSession
 from pyspark.sql.types import *
 
 from PredictionAlgorithms.relationship import Relationship
 
-spark = SparkSession.builder.appName("predictive_Analysis").master("local[*]").getOrCreate()
-spark.sparkContext.setLogLevel("ERROR")
+spark = SparkSession.builder.appName('predictive_Analysis').master('local[*]').getOrCreate()
+spark.sparkContext.setLogLevel('ERROR')
+'''
+trainDataRation = ration of training data, take input from the user
+learningRate = learning rate applied on the model, take input from the user
+dataset_add = dataset address, from the user
+feature_colm = column as a features is taken from the user
+relation_list = relationship list of each column needed to be applied
+relation = whether it is linear relation or non linear taken from the user end
+'''
 
 
 class LinearRegressionModel():
@@ -21,27 +31,74 @@ class LinearRegressionModel():
             dataset.show()
 
             label = ''
-            for y in label_colm:
-                label = y
+            for val in label_colm:
+                label = val
+            #ETL part
+            Schema = dataset.schema
+            stringFeatures = []
+            numericalFeatures = []
+            for x in Schema:
+                if (str(x.dataType) == "StringType" or str(x.dataType) == 'TimestampType' or str(
+                        x.dataType) == 'DateType' or str(x.dataType) == 'BooleanType' or str(x.dataType) == 'BinaryType'):
+                    for y in feature_colm:
+                        if x.name == y:
+                            dataset = dataset.withColumn(y, dataset[y].cast(StringType()))
+                            stringFeatures.append(x.name)
+                else:
+                    for y in feature_colm:
+                        if x.name == y:
+                            numericalFeatures.append(x.name)
 
-            print(label)
-            if relation=='linear':
-                print('linear relationship')
-            if relation=='non_linear':
+            if relation == 'linear':
+                dataset = dataset
+            if relation == 'non_linear':
                 dataset = Relationship(dataset, relation_list)
-            dataset.show()
-            featureassembler = VectorAssembler(inputCols=feature_colm,
-                                               outputCol="Independent_features")
-            output = featureassembler.transform(dataset)
-            output.show()
-            output.select("Independent_features").show()
-            finalized_data = output.select("Independent_features", label)
-            finalized_data.show()
+
+
+            categoryColmList = []
+            categoryColmListFinal = []
+            categoryColmListDict = {}
+            countOfCategoricalColmList = []
+            for value in stringFeatures:
+                categoryColm = value
+                listValue = value
+                listValue = []
+                categoryColm = dataset.groupby(value).count()
+                countOfCategoricalColmList.append(categoryColm.count())
+                categoryColmJson = categoryColm.toJSON()
+                for row in categoryColmJson.collect():
+                    categoryColmSummary = json.loads(row)
+                    listValue.append(categoryColmSummary)
+                categoryColmListDict[value] = listValue
+
+            if not stringFeatures:
+                maxCategories = 5
+            else:
+                maxCategories = max(countOfCategoricalColmList)
+            for x in Schema:
+                if (str(x.dataType) == "StringType" and x.name == label):
+                    for labelkey in label_colm:
+                        label_indexer = StringIndexer(inputCol=label, outputCol='indexed_' + label, handleInvalid="skip").fit(dataset)
+                        dataset = label_indexer.transform(dataset)
+                        label = 'indexed_' + label
+                else:
+                    label = label
+            indexed_features = []
+            encodedFeatures = []
+            for colm in stringFeatures:
+                indexer = StringIndexer(inputCol=colm, outputCol='indexed_' + colm, handleInvalid="skip").fit(dataset)
+                indexed_features.append('indexed_' + colm)
+                dataset = indexer.transform(dataset)
+            featureAssembler = VectorAssembler(inputCols=indexed_features + numericalFeatures, outputCol='features', handleInvalid="skip")
+            dataset = featureAssembler.transform(dataset)
+            vectorIndexer = VectorIndexer(inputCol='features', outputCol='vectorIndexedFeatures', maxCategories=maxCategories, handleInvalid="skip").fit(
+                dataset)
+            dataset = vectorIndexer.transform(dataset)
             trainDataRatioTransformed = self.trainDataRatio
             testDataRatio = 1 - trainDataRatioTransformed
-            train_data, test_data = finalized_data.randomSplit([trainDataRatioTransformed, testDataRatio], seed=40)
+            train_data, test_data = dataset.randomSplit([trainDataRatioTransformed, testDataRatio], seed=40)
 
-            lr = LinearRegression(featuresCol="Independent_features", labelCol=label)
+            lr = LinearRegression(featuresCol="vectorIndexedFeatures", labelCol=label)
             regressor = lr.fit(train_data)
             locationAddress = 'hdfs://10.171.0.181:9000/dev/dmxdeepinsight/datasets/'
 
@@ -50,9 +107,20 @@ class LinearRegressionModel():
             coefficient_t = str(regressor.coefficients)
             print("intercept : " + str(regressor.intercept))
             intercept_t = str(regressor.intercept)
+            featurePredictedLabel = feature_colm
+            featurePredictedLabel.append('prediction')
+            featurePredictedLabel.append(label)
+            # testDataEvaluation = regressor.evaluate(test_data)
+            # testDataPrediction = testDataEvaluation.predictions
+            # testDataPrediction.select(featurePredictedLabel).show()
+
             prediction = regressor.evaluate(test_data)
             prediction_val = prediction.predictions
-            prediction_val.show()
+            testDataPrediction = prediction_val.select(featurePredictedLabel)
+
+            # storing test predicted value to the dataset
+
+
             prediction_val_pand = prediction_val.select(label, "prediction").toPandas()
             prediction_val_pand = prediction_val_pand.assign(
                 residual_vall=prediction_val_pand[label] - prediction_val_pand["prediction"])
@@ -151,6 +219,12 @@ class LinearRegressionModel():
                     significanceObject[pValue] = '-'
             print(significanceObject)
 
+            # storing test predicted value to the dataset
+
+            predictionData = 'prediction.parquet'
+
+            predictionDataStoring = locationAddress + userId + predictionData
+            testDataPrediction.write.parquet(predictionDataStoring, mode='overwrite')
 
             # residual  vs predicted value
 
@@ -169,7 +243,7 @@ class LinearRegressionModel():
             QQPlot = 'QQPlot.parquet'
             locationAddress = 'hdfs://10.171.0.181:9000/dev/dmxdeepinsight/datasets/'
 
-            userId = '6786103f-b49b-42f2-ba40-aa8168b65e67'
+            # userId = '6786103f-b49b-42f2-ba40-aa8168b65e67'
 
             QQPlotAddress = locationAddress + userId + QQPlot
             pred_residuals.write.parquet(QQPlotAddress, mode='overwrite')
