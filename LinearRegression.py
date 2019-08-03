@@ -25,7 +25,7 @@ class LinearRegressionModel():
         self.trainDataRatio = trainDataRatio
 
 
-    def linearReg(self, dataset_add, feature_colm, label_colm, relation_list, relation, userId):
+    def linearReg(self, dataset_add, feature_colm, label_colm, relation_list, relation, userId,locationAddress):
         try:
             dataset = spark.read.parquet(dataset_add)
             dataset.show()
@@ -100,7 +100,7 @@ class LinearRegressionModel():
 
             lr = LinearRegression(featuresCol="vectorIndexedFeatures", labelCol=label)
             regressor = lr.fit(train_data)
-            locationAddress = 'hdfs://10.171.0.181:9000/dev/dmxdeepinsight/datasets/'
+            # locationAddress = 'hdfs://10.171.0.181:9000/dev/dmxdeepinsight/datasets/'
 
 
             print("coefficient : " + str(regressor.coefficients))
@@ -241,7 +241,7 @@ class LinearRegressionModel():
             pred_residuals.show()
 
             QQPlot = 'QQPlot.parquet'
-            locationAddress = 'hdfs://10.171.0.181:9000/dev/dmxdeepinsight/datasets/'
+            # locationAddress = 'hdfs://10.171.0.181:9000/dev/dmxdeepinsight/datasets/'
 
             # userId = '6786103f-b49b-42f2-ba40-aa8168b65e67'
 

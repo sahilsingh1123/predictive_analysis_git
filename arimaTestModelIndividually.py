@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import statsmodels.api as sm
 from statsmodels.tsa.arima_model import ARIMA
-from pmdarima import auto_arima
+from pyramid.arima import auto_arima
 from pandas.plotting import register_matplotlib_converters
 
 import numpy as np
@@ -11,7 +11,7 @@ class ArimaForecasting():
         from pandas import datetime
         def parser(x):
             return datetime.strptime(x, '%Y-%m-%d')
-        indexedDataset = pd.read_csv("/home/fidel/Downloads/bankClientTwoMonthDataset.csv", date_parser=parser, parse_dates=[0],index_col=0)
+        indexedDataset = pd.read_csv("/home/fidel/Downloads/aTenDataset.csv", index_col=0)
         print (indexedDataset)
         #, date_parser=parser, parse_dates=[0],index_col=0
         # indexedDatasetFreq = pd.date_range(indexedDataset,freq=30)

@@ -92,6 +92,7 @@ def forcasting():
             response_data = SentimentAnalysis.perform_sentiment_analysis(data=data)
         elif algorithm == 'forecasting':
             forecastingAlgorithm = j['forecastingAlgorithm']
+
             if forecastingAlgorithm == 'arima':
                 arima_model_type= j['arima_model_type']
                 response_data = Forecasting.perform_forecasting(data=data, count=j['count'], len_type=j['len_type'], model_type=j['model_type'], trendType=j['trendType'], seasonType=j['seasonType'] , forecastAlgorithm= j['forecastingAlgorithm'] , P=j['P'],Q=j['Q'],D=j['D'], arima_model_type=arima_model_type,iterations=j['iterations'])
