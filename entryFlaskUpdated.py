@@ -6,12 +6,9 @@ from flask import Response
 from flask import jsonify
 from flask import request
 
-from PredictionAlgorithms import chi_sqr_original
-from PredictionAlgorithms import pearson_corr_original
-from PredictionAlgorithms.FeaturesSelection import FeaturesSelection
-from PredictionAlgorithms.LassoRegression import LassoRegressionModel
-from PredictionAlgorithms.LinearRegression import LinearRegressionModel
-from PredictionAlgorithms.RidgeRegression import RidgeRegressionModel
+from PredictionAlgorithms.PredictiveFeaturesSelection import PredictiveFeaturesSelection
+from PredictionAlgorithms.PredictiveRegressionModel import PredictiveRegressionModel
+# from PredictionAlgorithms.LinearRegression import LinearRegressionModel
 from PredictionAlgorithms.ml_server_components import FPGrowth
 from PredictionAlgorithms.ml_server_components import Forecasting
 from PredictionAlgorithms.ml_server_components import KMeans
@@ -35,49 +32,40 @@ def root():
     trainDataPercentage = requestData.get('trainDataPercentage')
     modelId = requestData.get('modelUUID')
     responseData = ''
-    locationAddress='hdfs://fidel-Latitude-E5570:9000/dev/dmxdeepinsight/datasets/'
+    locationAddress='hdfs://10.171.0.32:9000/dev/dmxdeepinsight/datasets/'
+
+    # for changes from UI
+    regParam=0.05
 
     try:
-        if algo_name == "linear_reg":
-            responseData = LinearRegressionModel(trainDataPercentage).linearReg(dataset_add=fileLocation,
-                                                                                               feature_colm=feature_colm_req,
-                                                                                               label_colm=label_colm_req,
-                                                                                               relation_list=relation_list,
-                                                                                               relation=relation,
-                                                                                               userId=modelId,locationAddress=locationAddress)
-        elif algo_name == 'pearson_test':
-            responseData = pearson_corr_original.Correlation(dataset_add=fileLocation, feature_colm=feature_colm_req,
-                                                             label_colm=label_colm_req)
-        elif algo_name == 'chi_square_test':
-            responseData = chi_sqr_original.Chi_sqr(dataset_add=fileLocation, feature_colm=feature_colm_req,
-                                                    label_colm=label_colm_req)
-        # elif algo_name == 'random_classifier':
-        #     responseData = RandomClassifierModel.randomClassifier(dataset_add=fileLocation,
-        #                                                           feature_colm=feature_colm_req,
-        #                                                           label_colm=label_colm_req,
-        #                                                           relation_list=relation_list, relation=relation,
-        #                                                           userId=modelId)
-        elif algo_name == 'random_regressor' or algo_name=="random_classifier":
-            # responseData = RandomRegressionModel.randomRegressor(dataset_add=fileLocation,
-            #                                                      feature_colm=feature_colm_req,
-            #                                                      label_colm=label_colm_req, relation_list=relation_list,
-            #                                                      relation=relation, userId=modelId)
-            featureSelectionObj=FeaturesSelection()
-            responseData=featureSelectionObj.featuresSelection(dataset_add=fileLocation,
-                                                                  feature_colm=feature_colm_req,
-                                                                  label_colm=label_colm_req,
-                                                                  relation_list=relation_list, relation=relation,
-                                                                  userId=modelId,algoName=algo_name)
-        elif algo_name == 'lasso_reg':
-            responseData = LassoRegressionModel(trainDataRatio=trainDataPercentage).lassoRegression(
-                dataset_add=fileLocation, feature_colm=feature_colm_req, label_colm=label_colm_req,
-                relation_list=relation_list, relation=relation, userId=modelId)
-        elif algo_name == 'ridge_reg':
-            responseData = RidgeRegressionModel().ridgeRegression(dataset_add=fileLocation,
-                                                                  feature_colm=feature_colm_req,
-                                                                  label_colm=label_colm_req,
-                                                                  relation_list=relation_list, relation=relation,
-                                                                  userId=modelId)
+        if algo_name == "linear_reg" or algo_name == "lasso_reg" or algo_name == "ridge_reg":
+            predictiveRegressionModelObj = \
+                PredictiveRegressionModel(trainDataRatio=trainDataPercentage,
+                                          dataset_add=fileLocation,
+                                          feature_colm=feature_colm_req,
+                                          label_colm=label_colm_req,
+                                          relation_list=relation_list,
+                                          relation=relation,
+                                          userId=modelId,
+                                          locationAddress=locationAddress,
+                                          algoName=algo_name
+                                          )
+            if algo_name=="linear_reg":
+                responseData = \
+                    predictiveRegressionModelObj.linearModel()
+            if algo_name=="ridge_reg" or algo_name ==  "lasso_reg":
+                responseData = \
+                    predictiveRegressionModelObj.ridgeLassoModel(regParam=regParam)
+
+        if algo_name == 'random_regressor' or algo_name == "random_classifier":
+            PredictiveFeaturesSelectionObj = PredictiveFeaturesSelection()
+            responseData = \
+                PredictiveFeaturesSelectionObj.featuresSelection(dataset_add=fileLocation,
+                                                      feature_colm=feature_colm_req,
+                                                      label_colm=label_colm_req,
+                                                      relation_list=relation_list, relation=relation,
+                                                      userId=modelId,algoName=algo_name)
+
     except Exception as e:
         print('exception is = ' + str(e))
         responseData = str(json.dumps({'run_status ': 'request not processed '})).encode('utf-8')
@@ -129,13 +117,21 @@ def forecasting():
             D = j.get('D')
             arima_model_type = j.get('arima_model_type')
             iterations = j.get('iterations')
+            #for UI changes
             confIntPara = '0.95'
 
-            forecastClass = Forecasting.ForecastingModel(alpha=alpha, beta=beta, gamma=gamma, isTrending=isTrending,
+            forecastClass = \
+                Forecasting.ForecastingModel(alpha=alpha, beta=beta, gamma=gamma, isTrending=isTrending,
                                                          isSeasonal=isSeasonal,
                                                          seasonalPeriodsManual=seasonalPeriodsManual,
-                                                         seasonalP=seasonalP, seasonalD=seasonalD, seasonalQ=seasonalQ,confIntPara=confIntPara)
-            response_data=forecastClass.perform_forecasting(data=data, count=count, len_type=len_type,model_type=model_type,trendType=trendType,seasonType=seasonType,forecastAlgorithm=forecastAlgorithm,P=P,Q=Q,D=Q,arima_model_type=arima_model_type,iterations=iterations)
+                                                         seasonalP=seasonalP, seasonalD=seasonalD,
+                                                         seasonalQ=seasonalQ,confIntPara=confIntPara)
+            response_data = \
+                forecastClass.forecastingTimeSeries(data=data, count=count, len_type=len_type,
+                                                    model_type=model_type, trendType=trendType,
+                                                    seasonType=seasonType, forecastAlgorithm=forecastAlgorithm,
+                                                    P=P, Q=Q, D=D, arima_model_type=arima_model_type,
+                                                    iterations=iterations)
 
     except Exception as e:
         print('exception = ' + str(e))
