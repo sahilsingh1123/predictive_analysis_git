@@ -1,8 +1,8 @@
 from pyspark.ml.regression import LinearRegression, RandomForestRegressor
 from pyspark.sql import SparkSession
 from pyspark.sql.types import *
-from PredictionAlgorithms.PredictiveUtilities import PredictiveUtilities
 
+from PredictionAlgorithms.PredictiveUtilities import PredictiveUtilities
 
 spark = \
     SparkSession.builder.appName('predictive_Analysis').master('local[*]').getOrCreate()
@@ -53,7 +53,6 @@ class PredictiveRegressionModel():
     def regressionModelStat(self,regressor):
 
         #getting stats for regressor model (ridge,lasso and linear)
-        import pyspark.sql.functions as F
         import builtins
         round = getattr(builtins, 'round')
 
@@ -219,9 +218,12 @@ class PredictiveRegressionModel():
 
         summaryTable = {"summaryTableChartDataFileName":summaryTableChartDataFileName}
 
+
+
         response = {"graphData":graphNameDict,
                     "statData":summaryStats,
-                    "tableData":summaryTable}
+                    "tableData":summaryTable,
+                    "equation":equation}
 
         return response
 
@@ -232,9 +234,13 @@ class PredictiveRegressionModel():
         regressionStat=self.regressionModelStat(regressor=regressor)
 
         #persisting the model
-        modelName="linearRegressionModel.parquet"
-        modelStoringLocation=self.locationAddress + self.userId + modelName
-        regressor.write().overwrite().save(modelStoringLocation)
+        modelName="linearRegressionModel"
+        extention = ".parquet"
+        modelStorageLocation=self.locationAddress + self.userId.upper() + modelName.upper() + extention
+        regressor.write().overwrite().save(modelStorageLocation)
+
+        regressionStat["modelPersistLocation"] = {"modelName":modelName,
+                                                  "modelStorageLocation":modelStorageLocation}
 
 
         return regressionStat
@@ -251,10 +257,14 @@ class PredictiveRegressionModel():
         regressionStat = self.regressionModelStat(regressor=regressor)
 
         #persisting model
-        modelName = "lassoRegressionModel.parquet" if self.algoName=="lasso_reg" \
-            else "ridgeRegressionModel.parquet"
-        modelStoringLocation = self.locationAddress + self.userId + modelName
-        regressor.write().overwrite().save(modelStoringLocation)
+        modelName = "lassoRegressionModel" if self.algoName=="lasso_reg" \
+            else "ridgeRegressionModel"
+        extention = ".parquet"
+        modelStorageLocation = self.locationAddress + self.userId.upper() + modelName.upper() + extention
+        regressor.write().overwrite().save(modelStorageLocation)
+
+        regressionStat["modelPersistLocation"] = {"modelName": modelName,
+                                                  "modelStorageLocation": modelStorageLocation}
 
         return regressionStat
 

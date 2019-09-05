@@ -98,6 +98,7 @@ class GradientBoostClassification():
             trainDataRatioTransformed = self.trainDataRatio
             testDataRatio = 1 - trainDataRatioTransformed
             trainingData, testData = dataset.randomSplit([trainDataRatioTransformed, testDataRatio], seed=0)
+
             gradientBoostingmodel = GBTClassifier(labelCol=label, featuresCol='vectorIndexedFeatures', maxIter=10,stepSize=stepSize)
             gradientBoostFittingTrainingData = gradientBoostingmodel.fit(trainingData)
             gBPredictionTrainData = gradientBoostFittingTrainingData.transform(trainingData)

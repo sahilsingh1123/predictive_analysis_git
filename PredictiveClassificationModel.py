@@ -1,7 +1,7 @@
-from pyspark.ml.classification import LogisticRegression,RandomForestClassifier
+from pyspark.ml.classification import LogisticRegression, RandomForestClassifier
 from pyspark.sql import SparkSession
+
 from PredictionAlgorithms.PredictiveUtilities import PredictiveUtilities
-from pyspark.ml.classification import BinaryLogisticRegressionTrainingSummary
 
 spark = \
     SparkSession.builder.appName('predictive_Analysis').master('local[*]').getOrCreate()

@@ -1,8 +1,10 @@
-import pyspark.sql.functions as F
-from scipy.stats import norm
 import pandas as pd
-from PredictionAlgorithms.PredictiveDataTransformation import PredictiveDataTransformation
+import pyspark.sql.functions as F
 from pyspark.sql.functions import abs as absSpark, sqrt as sqrtSpark, mean as meanSpark, stddev as stddevSpark
+from scipy.stats import norm
+
+from PredictionAlgorithms.PredictiveDataTransformation import PredictiveDataTransformation
+
 
 #for future
 # from PredictionAlgorithms.PredictiveRegressionModel import *
@@ -34,16 +36,20 @@ class PredictiveUtilities():
         indexedFeatures = dataTransformationResult["indexedFeatures"]
         idNameFeaturesOrdered=dataTransformationResult["idNameFeaturesOrdered"]
         oneHotEncodedFeaturesList=dataTransformationResult.get("oneHotEncodedFeaturesList")
-        label = dataTransformationResult["label"]
-        trainData, testData = dataset.randomSplit([trainDataRatio, (1-trainDataRatio)],
-                                                    seed=40)
+        label = dataTransformationResult.get("label")
         featuresColm = "features"
 
-
-        ETLOnDatasetStat={"featuresColm":featuresColm,"labelColm":label,
-                          "trainData":trainData,"testData":testData,
-                          "idNameFeaturesOrdered":idNameFeaturesOrdered,
-                          "dataset":dataset}
+        if trainDataRatio is not None:
+            trainData, testData = dataset.randomSplit([trainDataRatio, (1 - trainDataRatio)],
+                                                      seed=40)
+            ETLOnDatasetStat = {"featuresColm": featuresColm, "labelColm": label,
+                                "trainData": trainData, "testData": testData,
+                                "idNameFeaturesOrdered": idNameFeaturesOrdered,
+                                "dataset": dataset}
+        else:
+            ETLOnDatasetStat = {"featuresColm": featuresColm, "labelColm": label,
+                                "idNameFeaturesOrdered": idNameFeaturesOrdered,
+                                "dataset": dataset}
 
         return ETLOnDatasetStat
 

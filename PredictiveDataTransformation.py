@@ -1,9 +1,12 @@
+import json
 import math
+
+from pyspark.ml.feature import VectorAssembler, StringIndexer, OneHotEncoderEstimator
 from pyspark.sql.functions import col
 from pyspark.sql.functions import udf
-from pyspark.ml.feature import VectorIndexer, VectorAssembler,StringIndexer,OneHotEncoderEstimator
-import json
 from pyspark.sql.types import *
+
+
 class PredictiveDataTransformation():
     def __init__(self,dataset):
         self.dataset=None if dataset==None else dataset
@@ -13,11 +16,20 @@ class PredictiveDataTransformation():
         self.labelColm = None if labelColm == None else labelColm
         self.featuresColm = None if featuresColm == None else featuresColm
         dataset=self.dataset
+
         schemaData=dataset.schema
         categoricalFeatures=[]
         numericalFeatures=[]
-        for y in self.labelColm:
-            label = y
+
+        if self.labelColm is not None:
+            for labelName in self.labelColm:
+                label = labelName
+        else:
+            label = self.labelColm
+
+
+
+
         for schemaVal in schemaData:
             if (str(schemaVal.dataType) == "StringType" or str(schemaVal.dataType) == "TimestampType" or str(
                     schemaVal.dataType) == "DateType" or str(schemaVal.dataType) == "BooleanType" or str(schemaVal.dataType) == "BinaryType"):
@@ -30,15 +42,17 @@ class PredictiveDataTransformation():
                     if schemaVal.name == y:
                         numericalFeatures.append(schemaVal.name)
 
-        for schemaVal in schemaData:
-            if (str(schemaVal.dataType) == "StringType" and schemaVal.name == label):
-                for labelkey in self.labelColm:
-                    label_indexer = StringIndexer(inputCol=label, outputCol='indexed_' + label,
-                                                  handleInvalid="skip").fit(dataset)
-                    dataset = label_indexer.transform(dataset)
-                    label = 'indexed_' + label
-            else:
-                label = label
+        if self.labelColm is not None:
+            for schemaVal in schemaData:
+                if (str(schemaVal.dataType) == "StringType" and schemaVal.name == label):
+                    for labelkey in self.labelColm:
+                        label_indexer = StringIndexer(inputCol=label, outputCol='indexed_' + label,
+                                                      handleInvalid="skip").fit(dataset)
+                        dataset = label_indexer.transform(dataset)
+                        label = 'indexed_' + label
+                else:
+                    label = label
+
         oneHotEncodedFeaturesList = []
         indexedFeatures = []
         for colm in categoricalFeatures:
@@ -87,13 +101,19 @@ class PredictiveDataTransformation():
                 idNameFeaturesOrdered = {}
                 for key in sorted(idNameFeatures):
                     idNameFeaturesOrdered[key] = idNameFeatures[key].replace("OneHotEncoded_", "")
-        # vec_indexer = VectorIndexer(inputCol='features', outputCol='vec_indexed_features',
-        # maxCategories=maxCategories,
-        #                             handleInvalid="skip").fit(dataset)
-        # categorical_features = vec_indexer.categoryMaps
-        # print("Choose %d categorical features: %s" %
-        #       (len(categorical_features), ", ".join(str(k) for k in categorical_features.keys())))
-        # dataset= vec_indexer.transform(dataset)
+
+        # this code was for vector indexer since it is not stable for now from spark end
+        # so will use it in future if needed.
+        '''
+        vec_indexer = VectorIndexer(inputCol='features', outputCol='vec_indexed_features',
+        maxCategories=maxCategories,
+                                    handleInvalid="skip").fit(dataset)
+        categorical_features = vec_indexer.categoryMaps
+        print("Choose %d categorical features: %s" %
+              (len(categorical_features), ", ".join(str(k) for k in categorical_features.keys())))
+        dataset= vec_indexer.transform(dataset)
+        '''
+
 
         result={"dataset":dataset,"categoricalFeatures":categoricalFeatures,
                 "numericalFeatures":numericalFeatures,"maxCategories":maxCategories,

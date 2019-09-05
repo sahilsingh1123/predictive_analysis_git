@@ -7,6 +7,7 @@ from flask import jsonify
 from flask import request
 
 from PredictionAlgorithms.PredictiveFeaturesSelection import PredictiveFeaturesSelection
+from PredictionAlgorithms.PredictivePrediction import PredictivePrediction
 from PredictionAlgorithms.PredictiveRegressionModel import PredictiveRegressionModel
 # from PredictionAlgorithms.LinearRegression import LinearRegressionModel
 from PredictionAlgorithms.ml_server_components import FPGrowth
@@ -31,6 +32,8 @@ def root():
     relation = requestData.get("relationship")
     trainDataPercentage = requestData.get('trainDataPercentage')
     modelId = requestData.get('modelUUID')
+    requestType = requestData.get("requestType")
+    modelStorageLocation = requestData.get("modelStorageLocation")
     responseData = ''
     locationAddress='hdfs://10.171.0.32:9000/dev/dmxdeepinsight/datasets/'
 
@@ -38,7 +41,8 @@ def root():
     regParam=0.05
 
     try:
-        if algo_name == "linear_reg" or algo_name == "lasso_reg" or algo_name == "ridge_reg":
+        if (algo_name == "linear_reg" or algo_name == "lasso_reg" or algo_name == "ridge_reg") \
+                and requestType == None:
             predictiveRegressionModelObj = \
                 PredictiveRegressionModel(trainDataRatio=trainDataPercentage,
                                           dataset_add=fileLocation,
@@ -57,7 +61,8 @@ def root():
                 responseData = \
                     predictiveRegressionModelObj.ridgeLassoModel(regParam=regParam)
 
-        if algo_name == 'random_regressor' or algo_name == "random_classifier":
+        if (algo_name == 'random_regressor' or algo_name == "random_classifier") \
+                and requestType == None:
             PredictiveFeaturesSelectionObj = PredictiveFeaturesSelection()
             responseData = \
                 PredictiveFeaturesSelectionObj.featuresSelection(dataset_add=fileLocation,
@@ -65,6 +70,23 @@ def root():
                                                       label_colm=label_colm_req,
                                                       relation_list=relation_list, relation=relation,
                                                       userId=modelId,algoName=algo_name)
+
+        if requestType == "prediction":
+            predictivePredictionObj = PredictivePrediction(dataset_add=fileLocation,
+                                                           feature_colm=feature_colm_req,
+                                                           label_colm=None,
+                                                           relation_list=relation_list,
+                                                           relation=relation,
+                                                           trainDataRatio=None,
+                                                           userId=modelId,
+                                                           locationAddress=locationAddress,
+                                                           algoName=algo_name,
+                                                           modelStorageLocation=modelStorageLocation)
+            responseData = \
+                predictivePredictionObj.loadModel()
+
+
+
 
     except Exception as e:
         print('exception is = ' + str(e))

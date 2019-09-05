@@ -1,7 +1,7 @@
 import json
 
 import pyspark.sql.functions as f
-from pyspark.ml.feature import VectorAssembler, StringIndexer, VectorIndexer
+from pyspark.ml.feature import VectorAssembler, StringIndexer, VectorIndexer,OneHotEncoderEstimator
 from pyspark.ml.regression import LinearRegression
 from pyspark.sql import SparkSession
 from pyspark.sql.types import *
@@ -84,11 +84,22 @@ class LinearRegressionModel():
                 else:
                     label = label
             indexed_features = []
-            encodedFeatures = []
+            # encodedFeatures = []
             for colm in stringFeatures:
                 indexer = StringIndexer(inputCol=colm, outputCol='indexed_' + colm, handleInvalid="skip").fit(dataset)
                 indexed_features.append('indexed_' + colm)
                 dataset = indexer.transform(dataset)
+            '''from pyspark.ml.feature import OneHotEncoderEstimator
+                oneHotEncodedFeaturesList = []
+                for colm in stringFeatures:
+                        indexer = StringIndexer(inputCol=colm, outputCol='indexed_' + colm, handleInvalid="skip").fit(dataset)
+                        indexed_features.append('indexed_' + colm)
+                        dataset = indexer.transform(dataset)
+                        oneHotEncodedFeaturesList.append('OneHotEncoded_' + colm)
+                oneHotEncoder=OneHotEncoderEstimator(inputCols=indexed_features,
+                                                     outputCols=oneHotEncodedFeaturesList)
+                oneHotEncoderFit=oneHotEncoder.fit(dataset)
+                oneHotEncoderFeaturesDataset=oneHotEncoderFit.transform(dataset)'''
             featureAssembler = VectorAssembler(inputCols=indexed_features + numericalFeatures, outputCol='features', handleInvalid="skip")
             dataset = featureAssembler.transform(dataset)
             vectorIndexer = VectorIndexer(inputCol='features', outputCol='vectorIndexedFeatures', maxCategories=maxCategories, handleInvalid="skip").fit(
@@ -200,6 +211,16 @@ class LinearRegressionModel():
             equation = equation[:-1]
             print(equation)
             equationAsList = list(equation)
+
+            '''# statTable function
+            def summaryTable(self,featuresName,featuresStat):
+                statTable={}
+                for name, stat in zip(featuresName.values(),
+                                      featuresStat.values()):
+                    print(name, ": ", stat)
+                    statTable[name]=stat
+                return statTable
+            '''
 
             # significance value
 

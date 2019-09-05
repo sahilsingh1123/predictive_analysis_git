@@ -1,4 +1,3 @@
-from pyspark.ml.feature import VectorAssembler
 from pyspark.ml.feature import ChiSqSelector
 from pyspark.ml.feature import VectorIndexer, VectorAssembler
 from pyspark.ml.stat import ChiSquareTest

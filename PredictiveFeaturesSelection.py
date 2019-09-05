@@ -1,6 +1,7 @@
-from pyspark.ml.regression import RandomForestRegressor
 from pyspark.ml.classification import RandomForestClassifier
+from pyspark.ml.regression import RandomForestRegressor
 from pyspark.sql import SparkSession
+
 from PredictionAlgorithms.PredictiveDataTransformation import PredictiveDataTransformation
 from PredictionAlgorithms.PredictiveStatisticalTest import PredictiveStatisticalTest
 from PredictionAlgorithms.PredictiveUtilities import PredictiveUtilities
