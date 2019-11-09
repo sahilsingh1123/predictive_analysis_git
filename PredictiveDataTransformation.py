@@ -6,20 +6,23 @@ from pyspark.sql.functions import col
 from pyspark.sql.functions import udf
 from pyspark.sql.types import *
 
+from PredictionAlgorithms.PredictiveConstants import PredictiveConstants
+
 
 class PredictiveDataTransformation():
-    def __init__(self,dataset):
-        self.dataset=None if dataset==None else dataset
+    def __init__(self, dataset):
+        self.dataset = None if dataset == None else dataset
 
-    #data transformation
-    def dataTranform(self,labelColm,featuresColm):
+    # data transformation
+    def dataTranform(self, labelColm, featuresColm,userId):
         self.labelColm = None if labelColm == None else labelColm
         self.featuresColm = None if featuresColm == None else featuresColm
-        dataset=self.dataset
+        dataset = self.dataset
+        vectorFeatures = userId + "features"
 
-        schemaData=dataset.schema
-        categoricalFeatures=[]
-        numericalFeatures=[]
+        schemaData = dataset.schema
+        categoricalFeatures = []
+        numericalFeatures = []
 
         if self.labelColm is not None:
             for labelName in self.labelColm:
@@ -27,12 +30,11 @@ class PredictiveDataTransformation():
         else:
             label = self.labelColm
 
-
-
-
         for schemaVal in schemaData:
-            if (str(schemaVal.dataType) == "StringType" or str(schemaVal.dataType) == "TimestampType" or str(
-                    schemaVal.dataType) == "DateType" or str(schemaVal.dataType) == "BooleanType" or str(schemaVal.dataType) == "BinaryType"):
+            if (str(schemaVal.dataType) == "StringType" or str(schemaVal.dataType) == "TimestampType" \
+                    or str(schemaVal.dataType) == "DateType" \
+                    or str(schemaVal.dataType) == "BooleanType" \
+                    or str(schemaVal.dataType) == "BinaryType"):
                 for y in self.featuresColm:
                     if schemaVal.name == y:
                         dataset = dataset.withColumn(y, dataset[y].cast(StringType()))
@@ -42,31 +44,35 @@ class PredictiveDataTransformation():
                     if schemaVal.name == y:
                         numericalFeatures.append(schemaVal.name)
 
+        # indexing of label column
+        isLabelIndexed = "no"
         if self.labelColm is not None:
             for schemaVal in schemaData:
                 if (str(schemaVal.dataType) == "StringType" and schemaVal.name == label):
+                    isLabelIndexed = "yes"
                     for labelkey in self.labelColm:
                         label_indexer = StringIndexer(inputCol=label, outputCol='indexed_' + label,
                                                       handleInvalid="skip").fit(dataset)
                         dataset = label_indexer.transform(dataset)
-                        label = 'indexed_' + label
+                        label = PredictiveConstants.INDEXED_ + label
                 else:
                     label = label
+                    isLabelIndexed = "no"
 
         oneHotEncodedFeaturesList = []
         indexedFeatures = []
         for colm in categoricalFeatures:
-            indexer = StringIndexer(inputCol=colm, outputCol='indexed_' + colm, handleInvalid="skip")\
+            indexer = StringIndexer(inputCol=colm, outputCol=PredictiveConstants.INDEXED_ + colm, handleInvalid="skip") \
                 .fit(dataset)
-            indexedFeatures.append('indexed_' + colm)
+            indexedFeatures.append(PredictiveConstants.INDEXED_ + colm)
             dataset = indexer.transform(dataset)
-            oneHotEncodedFeaturesList.append('OneHotEncoded_' + colm)
+            oneHotEncodedFeaturesList.append(PredictiveConstants.ONEHOTENCODED_ + colm)
         oneHotEncoder = OneHotEncoderEstimator(inputCols=indexedFeatures,
                                                outputCols=oneHotEncodedFeaturesList)
         oneHotEncoderFit = oneHotEncoder.fit(dataset)
         dataset = oneHotEncoderFit.transform(dataset)
 
-        combinedFeatures= oneHotEncodedFeaturesList + numericalFeatures
+        combinedFeatures = oneHotEncodedFeaturesList + numericalFeatures
         categoryColmListDict = {}
         countOfCategoricalColmList = []
         for value in categoricalFeatures:
@@ -79,28 +85,42 @@ class PredictiveDataTransformation():
                 listValue.append(categoryColmSummary)
             categoryColmListDict[value] = listValue
 
-        self.numericalFeatures=numericalFeatures
-        self.categoricalFeatures=categoricalFeatures
+        self.numericalFeatures = numericalFeatures
+        self.categoricalFeatures = categoricalFeatures
         if not categoricalFeatures:
             maxCategories = 5
         else:
             maxCategories = max(countOfCategoricalColmList)
-        
+
         featureassembler = VectorAssembler(
             inputCols=combinedFeatures,
-            outputCol="features", handleInvalid="skip")
+            outputCol=vectorFeatures, handleInvalid="skip")
         dataset = featureassembler.transform(dataset)
 
-        #retrieve the features colm name after onehotencoding
-        indexOfFeatures = dataset.schema.names.index("features")
+        # retrieve the features colm name after onehotencoding
+        indexOfFeatures = dataset.schema.names.index(vectorFeatures)
         oneHotEncodedFeaturesDict = dataset.schema.fields[indexOfFeatures].metadata['ml_attr']['attrs']
         idNameFeatures = {}
-        for type, value in oneHotEncodedFeaturesDict.items():
-            for subKey in value:
-                idNameFeatures[subKey.get("idx")] = subKey.get("name")
-                idNameFeaturesOrdered = {}
-                for key in sorted(idNameFeatures):
-                    idNameFeaturesOrdered[key] = idNameFeatures[key].replace("OneHotEncoded_", "")
+
+        if not oneHotEncodedFeaturesDict:
+            idNameFeaturesOrderedTemp = None
+        else:
+            for type, value in oneHotEncodedFeaturesDict.items():
+                for subKey in value:
+                    idNameFeatures[subKey.get("idx")] = subKey.get("name")
+                    idNameFeaturesOrderedTemp = {}
+                    for key in sorted(idNameFeatures):
+                        idNameFeaturesOrderedTemp[key] = idNameFeatures[key].replace(PredictiveConstants.ONEHOTENCODED_, "")
+
+        idNameFeaturesOrdered = None if idNameFeaturesOrderedTemp == None else idNameFeaturesOrderedTemp
+
+        # retrieve the label colm name only after label encoding
+        indexedLabelNameDict = {}
+        if isLabelIndexed == "yes":
+            indexOfLabel = dataset.schema.names.index(PredictiveConstants.INDEXED_ + label)
+            indexedLabel = dataset.schema.fields[indexOfLabel].metadata["ml_attr"]["vals"]
+            for value in indexedLabel:
+                indexedLabelNameDict[indexedLabel.index(value)] = value
 
         # this code was for vector indexer since it is not stable for now from spark end
         # so will use it in future if needed.
@@ -115,25 +135,41 @@ class PredictiveDataTransformation():
         '''
 
 
-        result={"dataset":dataset,"categoricalFeatures":categoricalFeatures,
-                "numericalFeatures":numericalFeatures,"maxCategories":maxCategories,
-                "categoryColmStats":categoryColmListDict,"indexedFeatures":indexedFeatures,
-                "label":label,
-                "oneHotEncodedFeaturesList":oneHotEncodedFeaturesList,
-                "idNameFeaturesOrdered":idNameFeaturesOrdered}
+        result = {PredictiveConstants.DATASET: dataset, PredictiveConstants.CATEGORICALFEATURES: categoricalFeatures,
+                  PredictiveConstants.NUMERICALFEATURES: numericalFeatures, PredictiveConstants.MAXCATEGORIES: maxCategories,
+                  PredictiveConstants.CATEGORYCOLMSTATS: categoryColmListDict, PredictiveConstants.INDEXEDFEATURES: indexedFeatures,
+                  PredictiveConstants.LABEL: label,
+                  PredictiveConstants.ONEHOTENCODEDFEATURESLIST: oneHotEncodedFeaturesList,
+                  PredictiveConstants.INDEXEDLABELNAMEDICT: indexedLabelNameDict,
+                  "isLabelIndexed": isLabelIndexed,
+                  PredictiveConstants.VECTORFEATURES:vectorFeatures,
+                  PredictiveConstants.IDNAMEFEATURESORDERED: idNameFeaturesOrdered
+                  }
         return result
 
-
-    #stats of the each colm
-    def dataStatistics(self,categoricalFeatures,numericalFeatures):
+    # stats of the each colm
+    def dataStatistics(self, categoricalFeatures, numericalFeatures, categoricalColmStat):
         # self.dataTranform()
         self.categoricalFeatures = None if categoricalFeatures == None else categoricalFeatures
         self.numericalFeatures = None if numericalFeatures == None else numericalFeatures
+        categoricalColmStat = None if categoricalColmStat == None else categoricalColmStat
         summaryList = ['mean', 'stddev', 'min', 'max']
         summaryDict = {}
-        dataset=self.dataset
+        dataset = self.dataset
         import pyspark.sql.functions as F
         import builtins
+
+        # distint values in colms(categorical only)
+        distinctValueDict = {}
+        for colm, distVal in categoricalColmStat.items():
+            tempList = []
+            for value in distVal:
+                for key, val in value.items():
+                    if key != "count":
+                        tempList.append(val)
+            distinctValueDict[colm] = len(tempList)
+
+        # stats for numerical colm
         round = getattr(builtins, 'round')
         for colm in self.numericalFeatures:
             summaryListTemp = []
@@ -142,11 +178,13 @@ class PredictiveDataTransformation():
                 summaryListSubTemp = []
                 for val in summ:
                     summaryListSubTemp.append(round(float(val), 4))
-                summaryListTemp.append(summaryListSubTemp)
+                summaryListTemp.extend(summaryListSubTemp)
             summaryDict[colm] = summaryListTemp
         summaryList.extend(['skewness', 'kurtosis', 'variance'])
         summaryDict['summaryName'] = summaryList
         summaryDict['categoricalColumn'] = self.categoricalFeatures
+        summaryDict["categoricalColmStats"] = distinctValueDict
+
         skewnessList = []
         kurtosisList = []
         varianceList = []
@@ -166,7 +204,6 @@ class PredictiveDataTransformation():
                     varianceList.append(round(column, 4))
 
         for skew, kurt, var, colm in zip(skewnessList, kurtosisList, varianceList, self.numericalFeatures):
-            print(skew, kurt, var)
             skewKurtVarList = []
             skewKurtVarList.append(skew)
             skewKurtVarList.append(kurt)
@@ -174,16 +211,17 @@ class PredictiveDataTransformation():
             skewKurtVarDict[colm] = skewKurtVarList
 
         for (keyOne, valueOne), (keyTwo, valueTwo) in zip(summaryDict.items(), skewKurtVarDict.items()):
-            print(keyOne, valueOne, keyTwo, valueTwo)
             if keyOne == keyTwo:
                 valueOne.extend(valueTwo)
                 summaryDict[keyOne] = valueOne
+        print(summaryDict)
         return summaryDict
 
-    def colmTransformation(self,colmTransformationList):
-        colmTransformationList=None if colmTransformationList==None else colmTransformationList
-        dataset=self.dataset
-        def relationshipTransform(dataset,colmTransformationList):
+    def colmTransformation(self, colmTransformationList):
+        colmTransformationList = None if colmTransformationList == None else colmTransformationList
+        dataset = self.dataset
+
+        def relationshipTransform(dataset, colmTransformationList):
             # creating the udf
             def log_list(x):
                 try:
@@ -234,7 +272,7 @@ class PredictiveDataTransformation():
 
             # spark.udf.register("squaredWithPython", square_list)
             # square_list_udf = udf(lambda y: square_list(y), ArrayType(FloatType))
-             # square_list_udf = udf(lambda y: exponent_list(y), FloatType())
+            # square_list_udf = udf(lambda y: exponent_list(y), FloatType())
             # # dataset.select('MPG', square_list_udf(col('MPG').cast(FloatType())).alias('MPG')).show()
             # dataset.withColumn('MPG', square_list_udf(col('MPG').cast(FloatType()))).show()
             # Relationship_val = 'square_list'
@@ -297,7 +335,5 @@ class PredictiveDataTransformation():
             return (dataset)
 
         # result={"colmTransformationList":colmTransformationList, "dataset":dataset}
-        result=relationshipTransform(dataset,colmTransformationList)
+        result = relationshipTransform(dataset, colmTransformationList)
         return result
-
-

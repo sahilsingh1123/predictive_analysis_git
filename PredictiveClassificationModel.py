@@ -9,7 +9,7 @@ spark.sparkContext.setLogLevel('ERROR')
 
 class PredictiveClassificationModel():
     def __init__(self, trainDataRatio, dataset_add, feature_colm, label_colm, relation_list,
-                 relation, userId, locationAddress, algoName):
+                 relation, userId, locationAddress, algoName,spark):
         self.trainDataRatio = trainDataRatio
         self.datasetAdd = dataset_add
         self.featuresColmList = feature_colm
@@ -19,6 +19,7 @@ class PredictiveClassificationModel():
         self.userId = userId
         self.locationAddress = locationAddress
         self.algoName = algoName
+        self.spark = spark
 
         # only for etlpart of the dataset
         self.predictiveUtilitiesObj = PredictiveUtilities()
@@ -30,7 +31,8 @@ class PredictiveClassificationModel():
                                                      relationshipList=self.relationshipList,
                                                      relation=self.relation,
                                                      trainDataRatio=self.trainDataRatio,
-                                                     spark=spark)
+                                                     spark=spark,
+                                                     userId=userId)
         self.dataset = ETLOnDatasetStats.get("dataset")
         self.featuresColm = ETLOnDatasetStats.get("featuresColm")
         self.labelColm = ETLOnDatasetStats.get("labelColm")

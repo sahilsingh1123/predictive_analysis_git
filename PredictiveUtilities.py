@@ -4,64 +4,69 @@ from pyspark.sql.functions import abs as absSpark, sqrt as sqrtSpark, mean as me
 from scipy.stats import norm
 
 from PredictionAlgorithms.PredictiveDataTransformation import PredictiveDataTransformation
+from PredictionAlgorithms.PredictiveConstants import PredictiveConstants
 
 
 #for future
 # from PredictionAlgorithms.PredictiveRegressionModel import *
 
 
-
 class PredictiveUtilities():
-    def __init__(self):
-        pass
+    # def __init__(self):
+    #     pass
 
-    def ETLOnDataset(self,datasetAdd,featuresColmList,labelColmList,
-                     relationshipList,relation,trainDataRatio,spark):
+    def ETLOnDataset(datasetAdd,featuresColmList,labelColmList,
+                     relationshipList,relation,trainDataRatio,spark,userId):
 
         dataset = spark.read.parquet(datasetAdd)
         # changing the relationship of the colm
         dataTransformationObj = PredictiveDataTransformation(dataset=dataset)
         dataset = \
             dataTransformationObj.colmTransformation(
-                colmTransformationList=relationshipList) if relation == "non_linear" else dataset
+                colmTransformationList=relationshipList) if relation == PredictiveConstants.NON_LINEAR else dataset
         # transformation
         dataTransformationObj = PredictiveDataTransformation(dataset=dataset)
         dataTransformationResult = dataTransformationObj.dataTranform(labelColm=labelColmList,
-                                                                      featuresColm=featuresColmList)
-        dataset = dataTransformationResult["dataset"]
-        categoricalFeatures = dataTransformationResult["categoricalFeatures"]
-        numericalFeatures = dataTransformationResult["numericalFeatures"]
-        maxCategories = dataTransformationResult["maxCategories"]
-        categoryColmStats = dataTransformationResult["categoryColmStats"]
-        indexedFeatures = dataTransformationResult["indexedFeatures"]
-        idNameFeaturesOrdered=dataTransformationResult["idNameFeaturesOrdered"]
-        oneHotEncodedFeaturesList=dataTransformationResult.get("oneHotEncodedFeaturesList")
-        label = dataTransformationResult.get("label")
-        featuresColm = "features"
+                                                                      featuresColm=featuresColmList,userId=userId)
+        dataset = dataTransformationResult[PredictiveConstants.DATASET]
+        categoricalFeatures = dataTransformationResult.get(PredictiveConstants.CATEGORICALFEATURES)
+        numericalFeatures = dataTransformationResult.get(PredictiveConstants.NUMERICALFEATURES)
+        maxCategories = dataTransformationResult.get(PredictiveConstants.MAXCATEGORIES)
+        categoryColmStats = dataTransformationResult.get(PredictiveConstants.CATEGORYCOLMSTATS)
+        indexedFeatures = dataTransformationResult.get(PredictiveConstants.INDEXEDFEATURES)
+        idNameFeaturesOrdered=dataTransformationResult.get(PredictiveConstants.IDNAMEFEATURESORDERED)
+        oneHotEncodedFeaturesList=dataTransformationResult.get(PredictiveConstants.ONEHOTENCODEDFEATURESLIST)
+        label = dataTransformationResult.get(PredictiveConstants.LABEL)
+        featuresColm = dataTransformationResult.get(PredictiveConstants.VECTORFEATURES)
+        # featuresColm = "features"
 
         if trainDataRatio is not None:
             trainData, testData = dataset.randomSplit([trainDataRatio, (1 - trainDataRatio)],
                                                       seed=40)
-            ETLOnDatasetStat = {"featuresColm": featuresColm, "labelColm": label,
-                                "trainData": trainData, "testData": testData,
-                                "idNameFeaturesOrdered": idNameFeaturesOrdered,
-                                "dataset": dataset}
+            ETLOnDatasetStat = {PredictiveConstants.FEATURESCOLM: featuresColm, PredictiveConstants.LABELCOLM: label,
+                                PredictiveConstants.TRAINDATA: trainData, PredictiveConstants.TESTDATA: testData,
+                                PredictiveConstants.IDNAMEFEATURESORDERED: idNameFeaturesOrdered,
+                                PredictiveConstants.DATASET: dataset,
+                                PredictiveConstants.INDEXEDFEATURES:indexedFeatures,
+                                PredictiveConstants.ONEHOTENCODEDFEATURESLIST:oneHotEncodedFeaturesList}
         else:
-            ETLOnDatasetStat = {"featuresColm": featuresColm, "labelColm": label,
-                                "idNameFeaturesOrdered": idNameFeaturesOrdered,
-                                "dataset": dataset}
+            ETLOnDatasetStat = {PredictiveConstants.FEATURESCOLM: featuresColm, PredictiveConstants.LABELCOLM: label,
+                                PredictiveConstants.IDNAMEFEATURESORDERED: idNameFeaturesOrdered,
+                                PredictiveConstants.DATASET: dataset,
+                                PredictiveConstants.INDEXEDFEATURES:indexedFeatures,
+                                PredictiveConstants.ONEHOTENCODEDFEATURESLIST:oneHotEncodedFeaturesList}
 
         return ETLOnDatasetStat
 
 
-    def summaryTable(self,featuresName,featuresStat):
+    def summaryTable(featuresName,featuresStat):
         statDict={}
         for name, stat in zip(featuresName.values(),
                               featuresStat.values()):
             statDict[name]=stat
         return statDict
 
-    def writeToParquet(self,fileName,locationAddress,userId,data):
+    def writeToParquet(fileName,locationAddress,userId,data):
         extention=".parquet"
         fileName=fileName.upper()
         userId = userId.upper()
@@ -72,50 +77,50 @@ class PredictiveUtilities():
                   "onlyFileName":onlyFileName}
         return result
 
-    def scaleLocationGraph(self,label,predictionTargetData,residualsData):
+    def scaleLocationGraph(label,predictionTargetData,residualsData,modelSheetName):
 
         predictionTrainingWithTarget = \
-            predictionTargetData.select(label, "prediction",
+            predictionTargetData.select(label, modelSheetName,
                                         sqrtSpark(absSpark(predictionTargetData[label])).alias("sqrtLabel"))
 
         predictionTrainingWithTargetIndexing = \
-            predictionTrainingWithTarget.withColumn("row_index",
+            predictionTrainingWithTarget.withColumn(PredictiveConstants.ROW_INDEX,
                                                     F.monotonically_increasing_id())
         residualsTrainingIndexing = \
-            residualsData.withColumn("row_index",
+            residualsData.withColumn(PredictiveConstants.ROW_INDEX,
                                      F.monotonically_increasing_id())
         residualsPredictiveLabelDataTraining = \
             predictionTrainingWithTargetIndexing.join(residualsTrainingIndexing,
-                                                      on=["row_index"]).sort("row_index").drop("row_index")
+                                                      on=[PredictiveConstants.ROW_INDEX]).sort(PredictiveConstants.ROW_INDEX).drop(PredictiveConstants.ROW_INDEX)
         residualsPredictiveLabelDataTraining.show()
         stdResiduals = \
-            residualsPredictiveLabelDataTraining.select("sqrtLabel", "prediction",
+            residualsPredictiveLabelDataTraining.select("sqrtLabel", modelSheetName,
                                                                    (residualsPredictiveLabelDataTraining["residuals"] /
                                                                     residualsPredictiveLabelDataTraining[
                                                                         "sqrtLabel"]).alias("stdResiduals"))
         sqrtStdResiduals = \
-            stdResiduals.select("stdResiduals", "prediction",
+            stdResiduals.select("stdResiduals", modelSheetName,
                                 sqrtSpark(absSpark(stdResiduals["stdResiduals"])).alias(
                                                   "sqrtStdResiduals"))
-        sqrtStdResiduals=sqrtStdResiduals.select("stdResiduals", "prediction")
+        sqrtStdResiduals=sqrtStdResiduals.select("stdResiduals", modelSheetName)
         sqrtStdResiduals.show()
         sqrtStdResiduals.na.drop()
         return sqrtStdResiduals
 
-    def residualsFittedGraph(self,residualsData,predictionData):
-        predictionData=predictionData.select("prediction")
-        residualsTrainingIndexing = residualsData.withColumn("row_index",
+    def residualsFittedGraph(residualsData,predictionData,modelSheetName):
+        predictionData=predictionData.select(modelSheetName)
+        residualsTrainingIndexing = residualsData.withColumn(PredictiveConstants.ROW_INDEX,
                                                              F.monotonically_increasing_id())
-        predictionTrainingIndexing = predictionData.withColumn("row_index",
+        predictionTrainingIndexing = predictionData.withColumn(PredictiveConstants.ROW_INDEX,
                                                                F.monotonically_increasing_id())
         residualsPredictiveDataTraining = \
             predictionTrainingIndexing.join(residualsTrainingIndexing,
-                                            on=["row_index"]).sort("row_index").drop("row_index")
+                                            on=[PredictiveConstants.ROW_INDEX]).sort(PredictiveConstants.ROW_INDEX).drop(PredictiveConstants.ROW_INDEX)
         residualsPredictiveDataTraining.na.drop()
         residualsPredictiveDataTraining.show()
         return residualsPredictiveDataTraining
 
-    def quantileQuantileGraph(self,residualsData,spark):
+    def quantileQuantileGraph(residualsData,spark):
         sortedResiduals = residualsData.sort("residuals")
         residualsCount = sortedResiduals.count()
         quantile = []

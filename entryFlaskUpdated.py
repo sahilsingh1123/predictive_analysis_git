@@ -1,21 +1,30 @@
 import json
 
-import matplotlib as mpl
 from flask import Flask
 from flask import Response
 from flask import jsonify
 from flask import request
 
+from pyspark.sql import SparkSession
+from PredictionAlgorithms.PredictiveExceptionHandling import PredictiveExceptionHandling
+from PredictionAlgorithms.PredictiveClassificationModel import PredictiveClassificationModel
 from PredictionAlgorithms.PredictiveFeaturesSelection import PredictiveFeaturesSelection
 from PredictionAlgorithms.PredictivePrediction import PredictivePrediction
 from PredictionAlgorithms.PredictiveRegressionModel import PredictiveRegressionModel
-# from PredictionAlgorithms.LinearRegression import LinearRegressionModel
+from PredictionAlgorithms.PredictiveConstants import PredictiveConstants
 from PredictionAlgorithms.ml_server_components import FPGrowth
 from PredictionAlgorithms.ml_server_components import Forecasting
 from PredictionAlgorithms.ml_server_components import KMeans
 from PredictionAlgorithms.ml_server_components import SentimentAnalysis
 
-mpl.use("TkAgg")
+# used in ETL--- ----------
+# spark = SparkSession.builder.master(sparkURL).appName("DMXDeepInsightpy").getOrCreate()
+
+
+spark = \
+    SparkSession.builder.appName('predictive_Analysis').master('local[*]').getOrCreate()
+spark.sparkContext.setLogLevel('ERROR')
+
 
 app = Flask(__name__)
 
@@ -24,24 +33,32 @@ def root():
     response = Response(content_type="application/json")
     requestString = request.data.decode("utf-8")
     requestData = json.loads(requestString)
-    fileLocation = requestData.get("fileLocation")
-    feature_colm_req = requestData.get("features_column")
-    label_colm_req = requestData.get("label_column")
-    algo_name = requestData.get("algorithm_name")
-    relation_list = requestData.get("relationship_list")
-    relation = requestData.get("relationship")
-    trainDataPercentage = requestData.get('trainDataPercentage')
-    modelId = requestData.get('modelUUID')
-    requestType = requestData.get("requestType")
-    modelStorageLocation = requestData.get("modelStorageLocation")
-    responseData = ''
-    locationAddress='hdfs://10.171.0.32:9000/dev/dmxdeepinsight/datasets/'
+    fileLocation = requestData.get(PredictiveConstants.FILELOCATION)
+    feature_colm_req = requestData.get(PredictiveConstants.PREDICTOR)
+    label_colm_req = requestData.get(PredictiveConstants.TARGET)
+    algo_name = requestData.get(PredictiveConstants.ALGORITHMNAME)
+    relation_list = requestData.get(PredictiveConstants.RELATIONSHIP_LIST)
+    relation = requestData.get(PredictiveConstants.RELATIONSHIP)
+    trainDataPercentage = requestData.get(PredictiveConstants.TRAINDATAPERCENTAGE)
+    modelId = requestData.get(PredictiveConstants.MODELUUID)
+    requestType = requestData.get(PredictiveConstants.REQUESTTYPE)
+    modelStorageLocation = requestData.get(PredictiveConstants.MODELSTORAGELOCATION)
+    locationAddress = requestData.get(PredictiveConstants.LOCATIONADDRESS)
+    datasetName = requestData.get(PredictiveConstants.DATASETNAME)
+    modelSheetName = requestData.get(PredictiveConstants.MODELSHEETNAME)
+    responseData = {}
+    # locationAddress='hdfs://10.171.0.151:9000/dev/dmxdeepinsight/datasets/'
 
-    # for changes from UI
+    # locationAddress is where writing of parquet dataset take place
+    # fileLocation is where dataframe is stored
+
+    # waiting for the change from UI end
     regParam=0.05
 
     try:
-        if (algo_name == "linear_reg" or algo_name == "lasso_reg" or algo_name == "ridge_reg") \
+        if (algo_name == PredictiveConstants.LINEAR_REG or algo_name == PredictiveConstants.LASSO_REG
+            or algo_name == PredictiveConstants.RIDGE_REG
+                or algo_name == "RandomForestAlgo" or algo_name == "GradientBoostAlgo") \
                 and requestType == None:
             predictiveRegressionModelObj = \
                 PredictiveRegressionModel(trainDataRatio=trainDataPercentage,
@@ -52,26 +69,48 @@ def root():
                                           relation=relation,
                                           userId=modelId,
                                           locationAddress=locationAddress,
-                                          algoName=algo_name
+                                          algoName=algo_name,
+                                          modelSheetName=modelSheetName,
+                                          spark = spark
                                           )
-            if algo_name=="linear_reg":
+            if algo_name==PredictiveConstants.LINEAR_REG:
                 responseData = \
                     predictiveRegressionModelObj.linearModel()
-            if algo_name=="ridge_reg" or algo_name ==  "lasso_reg":
+            if algo_name == PredictiveConstants.RIDGE_REG or algo_name == PredictiveConstants.LASSO_REG:
                 responseData = \
                     predictiveRegressionModelObj.ridgeLassoModel(regParam=regParam)
+            if algo_name == "RandomForestAlgo":
+                responseData = predictiveRegressionModelObj.randomForestRegressorModel()
+            if algo_name == "GradientBoostAlgo":
+                            responseData = predictiveRegressionModelObj.gradientBoostRegressorModel()
 
-        if (algo_name == 'random_regressor' or algo_name == "random_classifier") \
+        if (algo_name == PredictiveConstants.LOGISTIC_REG):
+            PredictiveClassificationModelObj = \
+                PredictiveClassificationModel(trainDataRatio=trainDataPercentage,
+                                          dataset_add=fileLocation,
+                                          feature_colm=feature_colm_req,
+                                          label_colm=label_colm_req,
+                                          relation_list=relation_list,
+                                          relation=relation,
+                                          userId=modelId,
+                                          locationAddress=locationAddress,
+                                          algoName=algo_name)
+            responseData = PredictiveClassificationModelObj.logisticRegression()
+
+        #for features selection only
+        #not for predictive models--------------------------------------
+        if (algo_name == PredictiveConstants.RANDOMREGRESSOR or algo_name == PredictiveConstants.RANDOMCLASSIFIER) \
                 and requestType == None:
-            PredictiveFeaturesSelectionObj = PredictiveFeaturesSelection()
+            PredictiveFeaturesSelectionObj = PredictiveFeaturesSelection(spark=spark)
             responseData = \
                 PredictiveFeaturesSelectionObj.featuresSelection(dataset_add=fileLocation,
                                                       feature_colm=feature_colm_req,
                                                       label_colm=label_colm_req,
                                                       relation_list=relation_list, relation=relation,
-                                                      userId=modelId,algoName=algo_name)
+                                                      userId=modelId,algoName=algo_name,
+                                                      locationAddress=locationAddress)
 
-        if requestType == "prediction":
+        if requestType == PredictiveConstants.PREDICTION:
             predictivePredictionObj = PredictivePrediction(dataset_add=fileLocation,
                                                            feature_colm=feature_colm_req,
                                                            label_colm=None,
@@ -81,16 +120,22 @@ def root():
                                                            userId=modelId,
                                                            locationAddress=locationAddress,
                                                            algoName=algo_name,
-                                                           modelStorageLocation=modelStorageLocation)
+                                                           modelStorageLocation=modelStorageLocation,
+                                                           modelSheetName=modelSheetName,
+                                                           datasetName = datasetName,
+                                                           spark=spark)
             responseData = \
                 predictivePredictionObj.loadModel()
 
+
+        responseData["run_status"] = "success"
 
 
 
     except Exception as e:
         print('exception is = ' + str(e))
-        responseData = str(json.dumps({'run_status ': 'request not processed '})).encode('utf-8')
+        # responseData = str(json.dumps({'run_status ': 'request not processed '})).encode('utf-8')
+        responseData = PredictiveExceptionHandling.exceptionHandling(e)
     print(responseData)
     return jsonify(success='success', message='it was a success', data=responseData)
 
@@ -139,6 +184,11 @@ def forecasting():
             D = j.get('D')
             arima_model_type = j.get('arima_model_type')
             iterations = j.get('iterations')
+            locationAddress = j.get("locationAddress")
+            modelName = j.get("modelName")
+            columnsNameList = j.get("columnsNameList")
+            sheetId = j.get("worksheetID")
+
             #for UI changes
             confIntPara = '0.95'
 
@@ -153,7 +203,11 @@ def forecasting():
                                                     model_type=model_type, trendType=trendType,
                                                     seasonType=seasonType, forecastAlgorithm=forecastAlgorithm,
                                                     P=P, Q=Q, D=D, arima_model_type=arima_model_type,
-                                                    iterations=iterations)
+                                                    iterations=iterations,
+                                                    columnsNameList=columnsNameList,
+                                                    locationAddress=locationAddress,
+                                                    modelName=modelName,
+                                                    sheetId=sheetId)
 
     except Exception as e:
         print('exception = ' + str(e))
